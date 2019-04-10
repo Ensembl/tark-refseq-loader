@@ -1,0 +1,78 @@
+"""
+.. See the NOTICE file distributed with this work for additional information
+   regarding copyright ownership.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+"""
+import luigi
+import os
+import wget
+
+
+class DownloadRefSeqSourceFile(luigi.ExternalTask):
+
+    download_dir = luigi.Parameter()
+    file_to_download = luigi.Parameter()
+    ftp_root = luigi.Parameter()
+
+    task_namespace = 'DownloadRefSeqSourceFile'
+
+    def output(self):
+        return luigi.LocalTarget(self.download_dir + '/' + self.file_to_download)
+
+    def run(self):
+        """
+        Worker function to download the file from refseq ftp source
+        Parameters
+        ----------
+        download_dir : str
+            Location of the download dir
+        file_to_download : str
+            File to download
+        ftp_root : str
+            Refseq ftp path
+        """
+
+        if not os.path.exists(self.download_dir):
+            os.makedirs(self.download_dir)
+
+        file_url = self.ftp_root + '/' + self.file_to_download
+        downloaded_file_path = self.download_dir + '/' + self.file_to_download
+
+        if not os.path.exists(downloaded_file_path):
+            wget.download(file_url, self.download_dir)
+
+
+class DownloadRefSeqSourceFiles(luigi.WrapperTask):
+    """
+    Wrapper Task to download refseq gff files
+    """
+
+    download_dir = luigi.Parameter()
+    task_namespace = 'DownloadRefSeqSourceFiles'
+
+    ftp_root = 'http://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/latest_assembly_versions/GCF_000001405.38_GRCh38.p12'  # @IgnorePep8
+    gff_file = 'GCF_000001405.38_GRCh38.p12_genomic.gff.gz'
+    genbank_file = 'GCF_000001405.38_GRCh38.p12_rna.gbff.gz'
+    fasta_file_gz = 'GCF_000001405.38_GRCh38.p12_rna.fna.gz'
+    protein_file_gz = 'GCF_000001405.38_GRCh38.p12_protein.faa.gz'
+
+    files_to_download = [gff_file, genbank_file, fasta_file_gz, protein_file_gz]
+
+    def requires(self):
+        for file_ in self.files_to_download:
+            yield DownloadRefSeqSourceFile(
+                download_dir=self.download_dir,
+                file_to_download=file_,
+                ftp_root=self.ftp_root
+                 )

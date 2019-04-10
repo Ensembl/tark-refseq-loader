@@ -1,3 +1,8 @@
+# ignore all project cache and migration files
+__pycache__/
+*.py[cod]
+.project
+.pydevproject
 *.txt
 .python-version
 *.pyc
