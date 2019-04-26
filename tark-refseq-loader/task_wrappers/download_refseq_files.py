@@ -64,14 +64,18 @@ class UnzipRefSeqFile(luigi.Task):
 
     def output(self):
         base = os.path.basename(self.file_to_download)
-        downloaded_file_url_unzipped = self.download_dir + os.path.splitext(base)[0]
+        downloaded_file_url_unzipped = self.download_dir + '/' + os.path.splitext(base)[0]
         return luigi.LocalTarget(downloaded_file_url_unzipped)
 
     def run(self):
         downloaded_file = self.download_dir + '/' + self.file_to_download
+        base = os.path.basename(self.file_to_download)
+        downloaded_file_url_unzipped = self.download_dir + os.path.splitext(base)[0]
         subprocess.Popen(["gunzip",
-                          "--keep",
-                          downloaded_file
+                          "-c",
+                          downloaded_file,
+                          " > ",
+                          downloaded_file_url_unzipped
                           ])
 
 
