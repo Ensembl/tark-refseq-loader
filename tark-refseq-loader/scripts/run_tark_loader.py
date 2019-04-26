@@ -20,7 +20,12 @@ import argparse
 
 
 # How to run?
+# As local scheduler
+# time PYTHONPATH='.' python scripts/run_tark_loader.py --download_dir='/Users/prem/workspace/software/tmp/refseq_download_dir'
+
+# Start the server
 # luigid --background --pidfile /Users/prem/workspace/software/tmp/pid/tark-loader.pid --logdir /Users/prem/workspace/software/tmp/logs/ --state-path /Users/prem/workspace/software/tmp/state/ @IgnorePep8
+# Run the loader
 # PYTHONPATH='.' python scripts/run_tark_loader.py --download_dir='/Users/prem/workspace/software/tmp/refseq_download_dir' @IgnorePep8
 
 class LoadRefSeq(luigi.WrapperTask):
