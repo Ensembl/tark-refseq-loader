@@ -60,7 +60,10 @@ class UnzipRefSeqFile(luigi.Task):
     task_namespace = 'UnzipRefSeqFile'
 
     def requires(self):
-        return DownloadRefSeqSourceFile(self.download_dir, self.file_to_download, self.ftp_root)
+        return DownloadRefSeqSourceFile(
+                download_dir=self.download_dir,
+                file_to_download=self.file_to_download,
+                ftp_root=self.ftp_root)
 
     def output(self):
         base = os.path.basename(self.file_to_download)
@@ -108,6 +111,11 @@ class DownloadRefSeqSourceFiles(luigi.WrapperTask):
 
     def requires(self):
         for file_ in self.files_to_download:
+            yield DownloadRefSeqSourceFile(
+                download_dir=self.download_dir,
+                file_to_download=file_,
+                ftp_root=self.ftp_root)
+
             yield UnzipRefSeqFile(
                 download_dir=self.download_dir,
                 file_to_download=file_,
