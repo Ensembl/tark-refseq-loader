@@ -17,8 +17,8 @@
 import luigi
 import os
 import wget
-from luigi.contrib.external_program import ExternalProgramTask
 import subprocess
+from luigi.contrib.lsf import LSFJobTask
 
 
 class DownloadRefSeqSourceFile(luigi.ExternalTask):
@@ -52,7 +52,7 @@ class DownloadRefSeqSourceFile(luigi.ExternalTask):
         wget.download(file_url, self.download_dir)
 
 
-class UnzipRefSeqFile(luigi.Task):
+class UnzipRefSeqFile(LSFJobTask):
 
     download_dir = luigi.Parameter()
     file_to_download = luigi.Parameter()
@@ -69,13 +69,8 @@ class UnzipRefSeqFile(luigi.Task):
 
     def run(self):
         downloaded_file = self.download_dir + '/' + self.file_to_download
-        base = os.path.basename(self.file_to_download)
-        downloaded_file_url_unzipped = self.download_dir + os.path.splitext(base)[0]
         subprocess.Popen(["gunzip",
-                          "-c",
-                          downloaded_file,
-                          " > ",
-                          downloaded_file_url_unzipped
+                          downloaded_file
                           ])
 
 
