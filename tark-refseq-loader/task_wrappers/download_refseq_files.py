@@ -21,7 +21,7 @@ import subprocess
 from luigi.contrib.lsf import LSFJobTask
 
 
-class DownloadRefSeqSourceFile(LSFJobTask):
+class DownloadRefSeqSourceFile(luigi.Task):
 
     download_dir = luigi.Parameter()
     file_to_download = luigi.Parameter()
@@ -52,7 +52,7 @@ class DownloadRefSeqSourceFile(LSFJobTask):
         wget.download(file_url, self.download_dir)
 
 
-class UnzipRefSeqFile(LSFJobTask):
+class UnzipRefSeqFile(luigi.Task):
 
     download_dir = luigi.Parameter()
     file_to_download = luigi.Parameter()
