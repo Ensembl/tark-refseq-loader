@@ -202,6 +202,7 @@ class ParseGffFileWrapper(luigi.WrapperTask):
         # load the parent tables
         parent_ids = None
         dryrun = False
+
         if not dryrun:
             parent_ids = DatabaseHandler.getInstance().populate_parent_tables()
 
@@ -235,7 +236,7 @@ class ParseGffFileWrapper(luigi.WrapperTask):
                        str(seq_region),
                        parent_ids,
                        limits,
-                       True
+                       dryrun
                     )
 
     def get_seq_region_from_refseq_accession(self, refseq_accession):
