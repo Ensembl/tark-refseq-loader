@@ -16,6 +16,9 @@
 """
 
 from Bio import SeqIO, SeqFeature
+from Bio.SeqFeature import SeqFeature, FeatureLocation
+from Bio.Seq import Seq
+from Bio.Alphabet import generic_dna
 import logging
 
 # Get an instance of a logger
@@ -52,11 +55,12 @@ class GenBankHandler():
             raise ValueError("Genbank Handler not initialized")
 
     def get_seq_record_by_id_location(self, identifier, start=None, end=None, strand_=None):
-        logger.info("Identifier {0}  Start {1}  End {2} Strand {3} ".format(identifier, start, end, strand_))
+        # print("Identifier {0}  Start {1}  End {2} Strand {3} ".format(identifier, start, end, strand_))
         if self.indexed_data is not None:
             if start is not None and end is not None and strand_ is not None:
                 seq = self.get_sequence_by_id(identifier)
-                feature = SeqFeature.FeatureLocation(start, end, strand=strand_)
+                dna_seq = Seq(str(seq), generic_dna)
+                feature = SeqFeature(FeatureLocation(start, end), type="exon")
                 return str(feature.extract(seq))
             else:
                 return self.get_sequence_by_id(identifier)
@@ -76,8 +80,8 @@ class GenBankHandler():
             print(feature)
             if feature.type == 'exon':
                 print("Start: {0}  End {1}  Strand {2}".format(str(feature.location.start),
-                                                                     str(feature.location.end),
-                                                                     str(feature.location.strand)))
+                                                               str(feature.location.end),
+                                                               str(feature.location.strand)))
                 sequence = self.get_seq_record_by_id_location(identifier,
                                                               feature.location.start,
                                                               feature.location.end,

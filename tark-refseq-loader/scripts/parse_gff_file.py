@@ -61,7 +61,7 @@ class ParseRecord(luigi.Task):
         print(self.downloaded_files['protein'])
         protein_sequence_handler = FastaHandler(self.downloaded_files['protein'])
 
-        print(" Seq region limit " + str(self.seq_region))
+        print("Working on Seq region limit " + str(self.seq_region))
         with open(self.downloaded_files['gff']) as gff_handle:
 
             # Chromosome seq level
@@ -81,12 +81,12 @@ class ParseRecord(luigi.Task):
 
                         if 'transcript_id' in mRNA_feature.qualifiers:
                             transcript_id = mRNA_feature.qualifiers['transcript_id'][0]
-                            print("Has transcript id " + str(transcript_id))
                         else:
                             continue
 
-                        if transcript_id != "NM_194255.3":
-                            continue
+#                         if transcript_id != "NM_013236.3":
+#                         #if transcript_id != "NM_000417.2":
+#                             continue
 
                         refseq_exon_list = []
                         refseq_exon_order = 1
@@ -120,15 +120,16 @@ class ParseRecord(luigi.Task):
                                 refseq_cds_list.append(refseq_cds_dict)
                                 refseq_cds_order += 1
 
-                        annotated_transcript = AnnotationHandler.get_annotated_transcript(sequence_handler, self.seq_region,
-                                                                            mRNA_feature)
+                        annotated_transcript = AnnotationHandler.get_annotated_transcript(sequence_handler,
+                                                                                          self.seq_region,
+                                                                                          mRNA_feature)
 
                         # add sequence and other annotations
                         annotated_exons = []
                         if len(refseq_exon_list) > 0:
                             annotated_exons = AnnotationHandler.get_annotated_exons(sequence_handler, self.seq_region,
-                                                                      transcript_id,
-                                                                      refseq_exon_list)
+                                                                                    transcript_id,
+                                                                                    refseq_exon_list)
 
                             if annotated_exons is not None and len(annotated_exons) > 0:
 
@@ -155,16 +156,16 @@ class ParseRecord(luigi.Task):
                     annotated_gene['transcripts'] = annotated_transcripts
                     feature_object_to_save = {}
                     feature_object_to_save["gene"] = annotated_gene
-        
-                    # remove later
-                    if len(annotated_gene['transcripts']) > 0:
-                        print(feature_object_to_save)
+
+#                     # remove later
+#                     if len(annotated_gene['transcripts']) > 0:
+#                         print(feature_object_to_save)
 
                     if not self.dryrun:
                         status = DatabaseHandler.getInstance().save_features_to_database(feature_object_to_save,
                                                                                          self.parent_ids)
                         if status is None:
-                            print("====Feature not save for " + str(self.parent_ids))
+                            print("====Feature not saved for " + str(self.parent_ids))
 
         print("About to write to the status file")
         status_dir = self.download_dir + '/' + 'status_logs'
@@ -175,19 +176,8 @@ class ParseRecord(luigi.Task):
         status_handle.write("Done")
         status_handle.close()
 
-# 
-# class CheckStatus(luigi.Task):
-#     def output(self):
-#         status_file = self.download_dir + '/' + 'status_file.txt'
-#         return luigi.LocalTarget(status_file)
-# 
-#     def run(self):
-#         print("About to write to the status file")
-#         status_handle = open(self.download_dir + '/status_file.txt', "w")
-#         status_handle.write("Done")
-#         status_handle.close()
 
-#time PYTHONPATH='.' python scripts/parse_gff_file.py --download_dir='/Users/prem/workspace/software/tmp/refseq_download_dir'
+# time PYTHONPATH='.' python scripts/parse_gff_file.py --download_dir='/Users/prem/workspace/software/tmp/refseq_download_dir'
 class ParseGffFileWrapper(luigi.WrapperTask):
     """
     Wrapper Task to parse gff file
@@ -199,30 +189,12 @@ class ParseGffFileWrapper(luigi.WrapperTask):
     fasta_file = 'GCF_000001405.38_GRCh38.p12_rna.fna'
     protein_file = 'GCF_000001405.38_GRCh38.p12_protein.faa'
 
-    #task_namespace = 'ParseGffFileWrapper'
-#     def complete(self):
-#         complete_list = []
-#         for file_ in self.files_to_download:
-#             base = os.path.basename(file_)
-#             downloaded_file_url_zipped = self.download_dir + '/' + file_
-#             downloaded_file_url_unzipped = self.download_dir + '/' + os.path.splitext(base)[0]
-# 
-#             if os.path.exists(downloaded_file_url_zipped) and os.path.exists(downloaded_file_url_unzipped):
-#                 complete_list.append(True)
-# 
-#         if len(complete_list) == len(self.files_to_download):
-#             return True
-#         else:
-#             return False
     def requires(self):
         downloaded_files = {}
         downloaded_files['gff'] = self.download_dir + "/" + self.gff_file
         downloaded_files['fasta'] = self.download_dir + "/" + self.fasta_file
         downloaded_files['protein'] = self.download_dir + "/" + self.protein_file
         downloaded_files['gbff'] = self.download_dir + "/" + self.genbank_file
-# 
-#         sequence_handler = GenBankHandler(downloaded_files['gbff'])
-#         protein_sequence_handler = FastaHandler(downloaded_files['protein'])
 
         # Examine for available regions
         examiner = GFF.GFFExaminer()
@@ -238,27 +210,23 @@ class ParseGffFileWrapper(luigi.WrapperTask):
             possible_limits = examiner.available_limits(gff_handle_examiner)
             chromosomes = sorted(possible_limits["gff_id"].keys())
 
-
             limits = dict()
             # for testing
-            filter_regions = ['21']
+            # filter_regions = ['10']
+            # filter_regions = ['22']
             for chrom_tuple in chromosomes:
                 chrom = chrom_tuple[0]
                 if not chrom.startswith("NC_"):
                     continue
 
-
                 seq_region = self.get_seq_region_from_refseq_accession(chrom)
 
-                print(" Seq region " + str(seq_region))
+#                 # Restrict only for filter_region
+#                 if filter_regions is not None:
+#                     if str(seq_region) not in filter_regions:
+#                         print(" Skipping " + str(seq_region))
+#                         continue
 
-                # Restrict only for filter_region
-                if filter_regions is not None:
-                    if str(seq_region) not in filter_regions:
-                        print(" Skipping " + str(seq_region))
-                        continue
-
-                print(" Seq region limit " + str(seq_region))
                 limits["gff_id"] = chrom_tuple
 
                 yield ParseRecord(
@@ -270,9 +238,6 @@ class ParseGffFileWrapper(luigi.WrapperTask):
                        True
                     )
 
-#         yield CheckStatus()
-
-
     def get_seq_region_from_refseq_accession(self, refseq_accession):
         matchObj = re.match( r'NC_(\d+)\.\d+', refseq_accession, re.M|re.I)  # @IgnorePep8
 
@@ -282,6 +247,8 @@ class ParseGffFileWrapper(luigi.WrapperTask):
                 return "X"
             elif chrom == 24:
                 return "Y"
+            elif chrom == 12920:
+                return "MT"
             else:
                 return chrom
 
