@@ -55,117 +55,122 @@ class ParseRecord(luigi.Task):
 
         print("Loading gbff.....")
         print(self.downloaded_files['gbff'])
-        sequence_handler = GenBankHandler(self.downloaded_files['gbff'])
+
+        #sequence_handler = GenBankHandler(self.downloaded_files['gbff'])
+        sequence_handler = FastaHandler(self.downloaded_files['fasta'])
 
         print("Loading protein.....")
         print(self.downloaded_files['protein'])
         protein_sequence_handler = FastaHandler(self.downloaded_files['protein'])
 
         print("Working on Seq region limit " + str(self.seq_region))
-        with open(self.downloaded_files['gff']) as gff_handle:
+
+        gff_handle = open(self.downloaded_files['gff'])
+        #with open(self.downloaded_files['gff']) as gff_handle:
 
             # Chromosome seq level
-            for rec in GFF.parse(gff_handle, limit_info=self.limits):
+        for rec in GFF.parse(gff_handle, limit_info=self.limits):
 
-                for gene_feature in rec.features:
+            for gene_feature in rec.features:
 
-                    # skip regions
-                    if gene_feature.type == "region":
+                # skip regions
+                if gene_feature.type == "region":
+                    continue
+
+                annotated_gene = AnnotationHandler.get_annotated_gene(self.seq_region, gene_feature)
+
+                # gene level
+                annotated_transcripts = []
+                for mRNA_feature in gene_feature.sub_features:
+
+                    if 'transcript_id' in mRNA_feature.qualifiers:
+                        transcript_id = mRNA_feature.qualifiers['transcript_id'][0]
+                    else:
                         continue
 
-                    annotated_gene = AnnotationHandler.get_annotated_gene(self.seq_region, gene_feature)
-
-                    # gene level
-                    annotated_transcripts = []
-                    for mRNA_feature in gene_feature.sub_features:
-
-                        if 'transcript_id' in mRNA_feature.qualifiers:
-                            transcript_id = mRNA_feature.qualifiers['transcript_id'][0]
-                        else:
-                            continue
-
-#                         if transcript_id != "NM_013236.3":
 #                         #if transcript_id != "NM_000417.2":
 #                             continue
 
-                        refseq_exon_list = []
-                        refseq_exon_order = 1
+                    refseq_exon_list = []
+                    refseq_exon_order = 1
 
-                        refseq_cds_list = []
-                        refseq_cds_order = 1
-                        for mRNA_sub_feature in mRNA_feature.sub_features:
-                            refseq_exon_dict = {}
-                            if 'exon' in mRNA_sub_feature.type:
-                                # print("Transcript Has exons" + str(mRNA_sub_feature.id))
-                                refseq_exon_dict['exon_stable_id'] = str(mRNA_sub_feature.id)
-                                refseq_exon_dict['exon_stable_id_version'] = 1  # dummmy version
-                                refseq_exon_dict['exon_order'] = refseq_exon_order
-                                # note that we are shifting one base here
-                                refseq_exon_dict['exon_start'] = str(mRNA_sub_feature.location.start + 1)
-                                refseq_exon_dict['exon_end'] = str(mRNA_sub_feature.location.end)
-                                refseq_exon_dict['exon_strand'] = str(mRNA_sub_feature.location.strand)
-                                refseq_exon_list.append(refseq_exon_dict)
-                                refseq_exon_order += 1
+                    refseq_cds_list = []
+                    refseq_cds_order = 1
+                    for mRNA_sub_feature in mRNA_feature.sub_features:
+                        refseq_exon_dict = {}
+                        if 'exon' in mRNA_sub_feature.type:
+                            # print("Transcript Has exons" + str(mRNA_sub_feature.id))
+                            refseq_exon_dict['exon_stable_id'] = str(mRNA_sub_feature.id)
+                            refseq_exon_dict['exon_stable_id_version'] = 1  # dummmy version
+                            refseq_exon_dict['exon_order'] = refseq_exon_order
+                            # note that we are shifting one base here
+                            refseq_exon_dict['exon_start'] = str(mRNA_sub_feature.location.start + 1)
+                            refseq_exon_dict['exon_end'] = str(mRNA_sub_feature.location.end)
+                            refseq_exon_dict['exon_strand'] = str(mRNA_sub_feature.location.strand)
+                            refseq_exon_list.append(refseq_exon_dict)
+                            refseq_exon_order += 1
 
-                            refseq_cds_dict = {}
-                            if 'CDS' in mRNA_sub_feature.type:
+                        refseq_cds_dict = {}
+                        if 'CDS' in mRNA_sub_feature.type:
 
-                                refseq_cds_dict['cds_order'] = refseq_cds_order
-                                # note that we are shifting one base here
-                                refseq_cds_dict['cds_start'] = str(mRNA_sub_feature.location.start + 1)
-                                refseq_cds_dict['cds_end'] = str(mRNA_sub_feature.location.end)
-                                refseq_cds_dict['cds_strand'] = str(mRNA_sub_feature.location.strand)
-                                refseq_cds_dict['cds_id'] = str(mRNA_sub_feature.id)
-                                refseq_cds_dict['protein_id'] = str(mRNA_sub_feature.qualifiers['protein_id'][0])  # @IgnorePep8
-                                refseq_cds_list.append(refseq_cds_dict)
-                                refseq_cds_order += 1
+                            refseq_cds_dict['cds_order'] = refseq_cds_order
+                            # note that we are shifting one base here
+                            refseq_cds_dict['cds_start'] = str(mRNA_sub_feature.location.start + 1)
+                            refseq_cds_dict['cds_end'] = str(mRNA_sub_feature.location.end)
+                            refseq_cds_dict['cds_strand'] = str(mRNA_sub_feature.location.strand)
+                            refseq_cds_dict['cds_id'] = str(mRNA_sub_feature.id)
+                            refseq_cds_dict['protein_id'] = str(mRNA_sub_feature.qualifiers['protein_id'][0])  # @IgnorePep8
+                            refseq_cds_list.append(refseq_cds_dict)
+                            refseq_cds_order += 1
 
-                        annotated_transcript = AnnotationHandler.get_annotated_transcript(sequence_handler,
-                                                                                          self.seq_region,
-                                                                                          mRNA_feature)
+                    annotated_transcript = AnnotationHandler.get_annotated_transcript(sequence_handler,
+                                                                                      self.seq_region,
+                                                                                      mRNA_feature)
 
-                        # add sequence and other annotations
-                        annotated_exons = []
-                        if len(refseq_exon_list) > 0:
-                            annotated_exons = AnnotationHandler.get_annotated_exons(sequence_handler, self.seq_region,
-                                                                                    transcript_id,
-                                                                                    refseq_exon_list)
+                    # add sequence and other annotations
+                    annotated_exons = []
+                    if len(refseq_exon_list) > 0:
+                        annotated_exons = AnnotationHandler.get_annotated_exons(sequence_handler, self.seq_region,
+                                                                                transcript_id,
+                                                                                refseq_exon_list)
 
-                            if annotated_exons is not None and len(annotated_exons) > 0:
+                        if annotated_exons is not None and len(annotated_exons) > 0:
 
-                                exon_set_checksum = ChecksumHandler.get_exon_set_checksum(annotated_exons)
-                                annotated_transcript['exon_set_checksum'] = exon_set_checksum
-                                annotated_transcript['exons'] = annotated_exons
-                            else:
-                                annotated_transcript['exons'] = []
-
-                        annotated_translation = []
-                        if len(refseq_cds_list) > 0:
-                            protein_id = refseq_cds_list[0]['protein_id']
-                            annotated_translation = AnnotationHandler.get_annotated_cds(protein_sequence_handler,
-                                                                                        self.seq_region,
-                                                                          protein_id,
-                                                                          refseq_cds_list)
-                            annotated_transcript['translation'] = annotated_translation
+                            exon_set_checksum = ChecksumHandler.get_exon_set_checksum(annotated_exons)
+                            annotated_transcript['exon_set_checksum'] = exon_set_checksum
+                            annotated_transcript['exons'] = annotated_exons
                         else:
-                            annotated_transcript['translation'] = []
+                            annotated_transcript['exons'] = []
 
-                        annotated_transcript['transcript_checksum'] = ChecksumHandler.get_transcript_checksum(annotated_transcript)  # @IgnorePep8
-                        annotated_transcripts.append(annotated_transcript)
+                    annotated_translation = []
+                    if len(refseq_cds_list) > 0:
+                        protein_id = refseq_cds_list[0]['protein_id']
+                        annotated_translation = AnnotationHandler.get_annotated_cds(protein_sequence_handler,
+                                                                                    self.seq_region,
+                                                                      protein_id,
+                                                                      refseq_cds_list)
+                        annotated_transcript['translation'] = annotated_translation
+                    else:
+                        annotated_transcript['translation'] = []
 
-                    annotated_gene['transcripts'] = annotated_transcripts
-                    feature_object_to_save = {}
-                    feature_object_to_save["gene"] = annotated_gene
+                    annotated_transcript['transcript_checksum'] = ChecksumHandler.get_transcript_checksum(annotated_transcript)  # @IgnorePep8
+                    annotated_transcripts.append(annotated_transcript)
 
-#                     # remove later
-#                     if len(annotated_gene['transcripts']) > 0:
-#                         print(feature_object_to_save)
+                annotated_gene['transcripts'] = annotated_transcripts
+                feature_object_to_save = {}
+                feature_object_to_save["gene"] = annotated_gene
 
-                    if not self.dryrun:
-                        status = DatabaseHandler.getInstance().save_features_to_database(feature_object_to_save,
-                                                                                         self.parent_ids)
-                        if status is None:
-                            print("====Feature not saved for " + str(self.parent_ids))
+                # remove later
+                #if len(annotated_gene['transcripts']) > 0:
+                    #print(feature_object_to_save)
+
+                if not self.dryrun:
+                    status = DatabaseHandler.getInstance().save_features_to_database(feature_object_to_save,
+                                                                                     self.parent_ids)
+                    if status is None:
+                        print("====Feature not saved for " + str(self.parent_ids))
+
+        gff_handle.close()
 
         print("About to write to the status file")
         status_dir = self.download_dir + '/' + 'status_logs'
@@ -201,43 +206,73 @@ class ParseGffFileWrapper(luigi.WrapperTask):
 
         # load the parent tables
         parent_ids = None
-        dryrun = False
+        # use for debugging only
+        dryrun = True
 
         if not dryrun:
             parent_ids = DatabaseHandler.getInstance().populate_parent_tables()
 
         print(downloaded_files['gff'])
-        with open(downloaded_files['gff']) as gff_handle_examiner:
-            possible_limits = examiner.available_limits(gff_handle_examiner)
-            chromosomes = sorted(possible_limits["gff_id"].keys())
 
-            limits = dict()
-            # for testing
-            # filter_regions = ['10']
-            # filter_regions = ['22']
-            for chrom_tuple in chromosomes:
-                chrom = chrom_tuple[0]
-                if not chrom.startswith("NC_"):
-                    continue
+        # You could examine the file to get the possible chr, initialising it to save some time
+        #         with open(downloaded_files['gff']) as gff_handle_examiner:
+        #             possible_limits = examiner.available_limits(gff_handle_examiner)
+        #             chromosomes = sorted(possible_limits["gff_id"].keys())
+        chromosomes = [
+            ('NC_000001.11',),
+            ('NC_000002.12',),
+            ('NC_000003.12',),
+            ('NC_000004.12',),
+            ('NC_000005.10',),
+            ('NC_000006.12',),
+            ('NC_000007.14',),
+            ('NC_000008.11',),
+            ('NC_000009.12',),
+            ('NC_000010.11',),
+            ('NC_000011.10',),
+            ('NC_000012.12',),
+            ('NC_000013.11',),
+            ('NC_000014.9',),
+            ('NC_000015.10',),
+            ('NC_000016.10',),
+            ('NC_000017.11',),
+            ('NC_000018.10',),
+            ('NC_000019.10',),
+            ('NC_000020.11',),
+            ('NC_000021.9',),
+            ('NC_000022.11',),
+            ('NC_000023.11',),
+            ('NC_000024.10',),
+            ('NC_012920.1',)
+            ]
+        limits = dict()
+        # for testing
+        # filter_regions = ['22']
+        # filter_regions = ['21', '22']
+        for chrom_tuple in chromosomes:
+            chrom = chrom_tuple[0]
+            if not chrom.startswith("NC_"):
+                continue
+            print(chrom_tuple)
 
-                seq_region = self.get_seq_region_from_refseq_accession(chrom)
+            seq_region = self.get_seq_region_from_refseq_accession(chrom)
 
-#                 # Restrict only for filter_region
-#                 if filter_regions is not None:
-#                     if str(seq_region) not in filter_regions:
-#                         print(" Skipping " + str(seq_region))
-#                         continue
+            # Restrict only for filter_region
+#             if filter_regions is not None:
+#                 if str(seq_region) not in filter_regions:
+#                     print(" Skipping " + str(seq_region))
+#                     continue
 
-                limits["gff_id"] = chrom_tuple
+            limits["gff_id"] = chrom_tuple
 
-                yield ParseRecord(
-                       self.download_dir,
-                       downloaded_files,
-                       str(seq_region),
-                       parent_ids,
-                       limits,
-                       dryrun
-                    )
+            yield ParseRecord(
+                   self.download_dir,
+                   downloaded_files,
+                   str(seq_region),
+                   parent_ids,
+                   limits,
+                   dryrun
+                )
 
     def get_seq_region_from_refseq_accession(self, refseq_accession):
         matchObj = re.match( r'NC_(\d+)\.\d+', refseq_accession, re.M|re.I)  # @IgnorePep8

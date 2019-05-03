@@ -80,20 +80,20 @@ class AnnotationHandler(object):
         exon_sequences = []
 
         refseq_exon_list_relative_coordinates = ExonUtils.compute_exon_coordinates(refseq_exon_list.copy())
-        '''
-        Ref: BioSeqFeature
-        Note that the start and end location numbering follow Python's scheme,
-        thus a GenBank entry of 123..150 (one based counting) becomes a location
-        of [122:150] (zero based counting).
-        '''
+#         '''
+#         Ref: BioSeqFeature
+#         Note that the start and end location numbering follow Python's scheme,
+#         thus a GenBank entry of 123..150 (one based counting) becomes a location
+#         of [122:150] (zero based counting).
+#         '''
 
         for exon in refseq_exon_list_relative_coordinates:
             sequence = sequence_handler.get_seq_record_by_id_location(transcript_identifier,
-                                                                      exon['exon_start']-1, exon['exon_end'],
+                                                                      exon['exon_start'], exon['exon_end'],
                                                                       int(exon['exon_strand']))
             exon_sequences.append(str(sequence))
         # exon_sequences = sequence_handler.get_exon_sequences_by_identifier(transcript_identifier)
-        print(exon_sequences)
+        #print(exon_sequences)
         annotated_exons = []
 
         if exon_sequences is None:

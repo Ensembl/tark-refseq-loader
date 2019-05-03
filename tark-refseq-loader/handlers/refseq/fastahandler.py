@@ -50,3 +50,35 @@ class FastaHandler(object):
                     return None
         else:
             raise ValueError("Fasta seq not found for id " + identifier)
+
+    def get_sequence_by_id(self, identifier):
+        if self.fasta_handler is not None:
+            try:
+                fasta_record = self.fasta_handler[identifier]
+                len_fasta_record = len(fasta_record)
+                print("len_fasta_record " + str(len_fasta_record))
+                seq_record = self.fasta_handler.get_seq(identifier, 1, len_fasta_record)
+                return seq_record.seq
+            except Exception as e:
+                print('Failed to get seq id: ' + str(identifier) + " " + str(e))
+                return None
+
+    def get_seq_record_by_id_location(self, identifier, start=None, end=None, strand=None):
+        print("Get sequence for identifier " + identifier  + " start " + str(start)  + "  end " + str(end) + "  strand " + str(strand))
+        if self.fasta_handler is not None:
+            if start is not None and end is not None:
+                seq_record = self.fasta_handler.get_seq(identifier, start, end)
+                if seq_record is not None:
+                    return seq_record.seq
+            else:
+                try:
+                    fasta_record = self.fasta_handler[identifier]
+                    len_fasta_record = len(fasta_record)
+                    print("len_fasta_record " + str(len_fasta_record))
+                    seq_record = self.fasta_handler.get_seq(identifier, 1, len_fasta_record)
+                    return seq_record.seq
+                except Exception as e:
+                    print('Failed to get seq id: ' + str(identifier) + " " + str(e))
+                    return None
+        else:
+            raise ValueError("Fasta seq not found for id " + identifier)
