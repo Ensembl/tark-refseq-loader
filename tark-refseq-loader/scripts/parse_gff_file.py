@@ -27,6 +27,7 @@ from handlers.refseq.databasehandler import DatabaseHandler
 from handlers.refseq.checksumhandler import ChecksumHandler
 from handlers.refseq.genbankhandler import GenBankHandler
 from handlers.refseq.fastahandler import FastaHandler
+from handlers.refseq.confighandler import ConfigHandler
 
 
 class ParseRecord(luigi.Task):
@@ -165,10 +166,12 @@ class ParseRecord(luigi.Task):
                     #print(feature_object_to_save)
 
                 if not self.dryrun:
-                    status = DatabaseHandler.getInstance().save_features_to_database(feature_object_to_save,
-                                                                                     self.parent_ids)
-                    if status is None:
-                        print("====Feature not saved for " + str(self.parent_ids))
+                    mydb_config = ConfigHandler().getInstance().get_section_config(section_name="DATABASE")
+                    status = DatabaseHandler(db_config=mydb_config,
+                                             mypool_name="mypool_" + str(self.seq_region)).save_features_to_database(feature_object_to_save,
+                                                                                                                     self.parent_ids)
+#                     if status is None:
+#                         print("====Feature not saved for " + str(self.parent_ids))
 
         gff_handle.close()
 
@@ -207,10 +210,12 @@ class ParseGffFileWrapper(luigi.WrapperTask):
         # load the parent tables
         parent_ids = None
         # use for debugging only
-        dryrun = True
+        dryrun = False
 
         if not dryrun:
-            parent_ids = DatabaseHandler.getInstance().populate_parent_tables()
+            mydb_config = ConfigHandler().getInstance().get_section_config(section_name="DATABASE")
+            parent_ids = DatabaseHandler(db_config=mydb_config,
+                                         mypool_name="mypool_parentids").populate_parent_tables()
 
         print(downloaded_files['gff'])
 
