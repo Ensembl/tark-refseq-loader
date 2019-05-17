@@ -167,9 +167,10 @@ class ParseRecord(luigi.Task):
 
                 if not self.dryrun:
                     mydb_config = ConfigHandler().getInstance().get_section_config(section_name="DATABASE")
-                    status = DatabaseHandler(db_config=mydb_config,
-                                             mypool_name="mypool_" + str(self.seq_region)).save_features_to_database(feature_object_to_save,
-                                                                                                                     self.parent_ids)
+                    dbh = DatabaseHandler(db_config=mydb_config,
+                                             mypool_name="mypool_" + str(self.seq_region))
+                    dbh.save_features_to_database(feature_object_to_save, self.parent_ids)
+                    dbh.cnxpool.close()
 #                     if status is None:
 #                         print("====Feature not saved for " + str(self.parent_ids))
 
@@ -252,7 +253,7 @@ class ParseGffFileWrapper(luigi.WrapperTask):
             ]
         limits = dict()
         # for testing
-        # filter_regions = ['22']
+        filter_regions = ['22']
         # filter_regions = ['21', '22']
         for chrom_tuple in chromosomes:
             chrom = chrom_tuple[0]
