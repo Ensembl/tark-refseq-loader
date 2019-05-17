@@ -18,6 +18,7 @@ import luigi
 import os
 import wget
 from luigi.contrib.external_program import ExternalProgramTask
+from luigi.contrib.lsf import LocalLSFJobTask
 import subprocess
 from BCBio import GFF
 import argparse
@@ -30,7 +31,8 @@ from handlers.refseq.fastahandler import FastaHandler
 from handlers.refseq.confighandler import ConfigHandler
 
 
-class ParseRecord(luigi.Task):
+#class ParseRecord(luigi.Task):
+class ParseRecord(LocalLSFJobTask):
     download_dir = luigi.Parameter()
     downloaded_files = luigi.DictParameter()
     seq_region = luigi.Parameter()
@@ -253,7 +255,8 @@ class ParseGffFileWrapper(luigi.WrapperTask):
             ]
         limits = dict()
         # for testing
-        filter_regions = ['22']
+        # filter_regions = None
+        filter_regions = ['1', '2']
         # filter_regions = ['21', '22']
         for chrom_tuple in chromosomes:
             chrom = chrom_tuple[0]
@@ -264,20 +267,20 @@ class ParseGffFileWrapper(luigi.WrapperTask):
             seq_region = self.get_seq_region_from_refseq_accession(chrom)
 
             # Restrict only for filter_region
-#             if filter_regions is not None:
-#                 if str(seq_region) not in filter_regions:
-#                     print(" Skipping " + str(seq_region))
-#                     continue
+            if filter_regions is not None:
+                if str(seq_region) not in filter_regions:
+                    print(" Skipping " + str(seq_region))
+                    continue
 
             limits["gff_id"] = chrom_tuple
 
             yield ParseRecord(
-                   self.download_dir,
-                   downloaded_files,
-                   str(seq_region),
-                   parent_ids,
-                   limits,
-                   dryrun
+                   download_dir=self.download_dir,
+                   downloaded_files=downloaded_files,
+                   seq_region=str(seq_region),
+                   parent_ids=parent_ids,
+                   limits=limits,
+                   dryrun=dryrun
                 )
 
     def get_seq_region_from_refseq_accession(self, refseq_accession):
@@ -309,4 +312,4 @@ if __name__ == "__main__":
                 download_dir=ARGS.download_dir,
             )
         ],
-        workers=25, local_scheduler=True)
+        workers=25, local_scheduler=False)
