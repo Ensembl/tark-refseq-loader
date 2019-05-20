@@ -33,7 +33,6 @@ from luigi.contrib.lsf import LSFJobTask
 import sys
 
 
-SHARED_TMP_DIR = ""
 RESOURCE_FLAG_ALIGNMENT = "mem=16384"
 MEMORY_FLAG_ALIGNMENT = "16384"
 RESOURCE_FLAG_MERGE = "mem=16384"
@@ -52,7 +51,6 @@ class ParseRecord(LSFJobTask):
     dryrun = luigi.BoolParameter()
     status_file = None
 
-
     # task_namespace = 'ParseGffFile'
 #
 #     def requires(self):
@@ -70,7 +68,7 @@ class ParseRecord(LSFJobTask):
         print("Loading gbff.....")
         print(self.downloaded_files['gbff'])
 
-        #sequence_handler = GenBankHandler(self.downloaded_files['gbff'])
+        # sequence_handler = GenBankHandler(self.downloaded_files['gbff'])
         sequence_handler = FastaHandler(self.downloaded_files['fasta'])
 
         print("Loading protein.....")
@@ -200,6 +198,7 @@ class ParseRecord(LSFJobTask):
 
 
 # time PYTHONPATH='.' python scripts/parse_gff_file.py --download_dir='/Users/prem/workspace/software/tmp/refseq_download_dir'
+# time PYTHONPATH='.' python scripts/parse_gff_file.py --download_dir='/hps/nobackup2/production/ensembl/prem/refseq_download' --python_path='/homes/prem/workspace/software/tark-refseq-loader/tark-refseq-loader'
 class ParseGffFileWrapper(luigi.WrapperTask):
     """
     Wrapper Task to parse gff file
@@ -286,6 +285,12 @@ class ParseGffFileWrapper(luigi.WrapperTask):
 
             limits["gff_id"] = chrom_tuple
 
+            # resource_flag = (defaults to mem=8192)
+            # memory_flag = (defaults to 8192)
+            # queue_flag = (defaults to queue_name)
+            # runtime_flag = (defaults to 60)
+            # job_name_flag = (defaults to )
+
             yield ParseRecord(
                    download_dir=self.download_dir,
                    downloaded_files=downloaded_files,
@@ -293,11 +298,10 @@ class ParseGffFileWrapper(luigi.WrapperTask):
                    parent_ids=parent_ids,
                    limits=limits,
                    dryrun=dryrun,
-                   user_shared_tmp_dir=SHARED_TMP_DIR,
-                   user_queue_flag=QUEUE_FLAG,
-                   user_save_job_info=SAVE_JOB_INFO,
-                   user_resource_flag=RESOURCE_FLAG_MERGE,
-                   user_memory_flag=MEMORY_FLAG_MERGE,
+                   queue_flag=QUEUE_FLAG,
+                   save_job_info=SAVE_JOB_INFO,
+                   resource_flag=RESOURCE_FLAG_MERGE,
+                   memory_flag=MEMORY_FLAG_MERGE,
                    user_python_path=self.user_python_path
                 )
 
