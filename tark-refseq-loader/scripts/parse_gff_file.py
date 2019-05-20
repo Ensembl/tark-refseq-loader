@@ -207,12 +207,11 @@ class ParseGffFileWrapper(luigi.WrapperTask):
     """
 
     download_dir = luigi.Parameter()
-    tmp_dir = luigi.Parameter()
     gff_file = 'GCF_000001405.38_GRCh38.p12_genomic.gff'
     genbank_file = 'GCF_000001405.38_GRCh38.p12_rna.gbff'
     fasta_file = 'GCF_000001405.38_GRCh38.p12_rna.fna'
     protein_file = 'GCF_000001405.38_GRCh38.p12_protein.faa'
-    user_python_path = luigi.Parameter()
+    # user_python_path = luigi.Parameter()
 
     def requires(self):
         downloaded_files = {}
@@ -305,7 +304,7 @@ class ParseGffFileWrapper(luigi.WrapperTask):
                    save_job_info=SAVE_JOB_INFO,
                    resource_flag=RESOURCE_FLAG_MERGE,
                    memory_flag=MEMORY_FLAG_MERGE,
-                   tmp_dir=self.tmp_dir
+                   shared_tmp_dir=self.tmp_dir
 
                 )
 
