@@ -308,8 +308,9 @@ class ParseGffFileWrapper(luigi.WrapperTask):
                    memory_flag=MEMORY_FLAG_MERGE,
                    shared_tmp_dir=self.tmp_dir,
                    extra_bsub_args=self.user_python_path
-
                 )
+        if self.complete():
+            return
 
     def get_seq_region_from_refseq_accession(self, refseq_accession):
         matchObj = re.match( r'NC_(\d+)\.\d+', refseq_accession, re.M|re.I)  # @IgnorePep8
