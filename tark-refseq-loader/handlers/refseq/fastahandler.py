@@ -42,7 +42,7 @@ class FastaHandler(object):
                 try:
                     fasta_record = self.fasta_handler[identifier]
                     len_fasta_record = len(fasta_record)
-                    print("len_fasta_record " + str(len_fasta_record))
+                    # print("len_fasta_record " + str(len_fasta_record))
                     seq_record = self.fasta_handler.get_seq(identifier, 1, len_fasta_record)
                     return seq_record.seq
                 except Exception as e:
@@ -56,7 +56,7 @@ class FastaHandler(object):
             try:
                 fasta_record = self.fasta_handler[identifier]
                 len_fasta_record = len(fasta_record)
-                print("len_fasta_record " + str(len_fasta_record))
+                # print("len_fasta_record " + str(len_fasta_record))
                 seq_record = self.fasta_handler.get_seq(identifier, 1, len_fasta_record)
                 return seq_record.seq
             except Exception as e:
@@ -64,7 +64,7 @@ class FastaHandler(object):
                 return None
 
     def get_seq_record_by_id_location(self, identifier, start=None, end=None, strand=None):
-        print("Get sequence for identifier " + identifier  + " start " + str(start)  + "  end " + str(end) + "  strand " + str(strand))
+        # print("Get sequence for identifier " + identifier  + " start " + str(start)  + "  end " + str(end) + "  strand " + str(strand))
         if self.fasta_handler is not None:
             if start is not None and end is not None:
                 seq_record = self.fasta_handler.get_seq(identifier, start, end)
@@ -74,7 +74,7 @@ class FastaHandler(object):
                 try:
                     fasta_record = self.fasta_handler[identifier]
                     len_fasta_record = len(fasta_record)
-                    print("len_fasta_record " + str(len_fasta_record))
+                    # print("len_fasta_record " + str(len_fasta_record))
                     seq_record = self.fasta_handler.get_seq(identifier, 1, len_fasta_record)
                     return seq_record.seq
                 except Exception as e:
