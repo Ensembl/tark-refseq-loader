@@ -32,7 +32,7 @@ from handlers.refseq.confighandler import ConfigHandler
 from luigi.contrib.lsf import LSFJobTask
 import sys
 
-
+SHARED_TMP_DIR = ""
 RESOURCE_FLAG_ALIGNMENT = "mem=16384"
 MEMORY_FLAG_ALIGNMENT = "16384"
 RESOURCE_FLAG_MERGE = "mem=16384"
@@ -51,6 +51,8 @@ class ParseRecord(LSFJobTask):
     dryrun = luigi.BoolParameter()
     status_file = None
 
+
+
     # task_namespace = 'ParseGffFile'
 #
 #     def requires(self):
@@ -68,7 +70,7 @@ class ParseRecord(LSFJobTask):
         print("Loading gbff.....")
         print(self.downloaded_files['gbff'])
 
-        # sequence_handler = GenBankHandler(self.downloaded_files['gbff'])
+        #sequence_handler = GenBankHandler(self.downloaded_files['gbff'])
         sequence_handler = FastaHandler(self.downloaded_files['fasta'])
 
         print("Loading protein.....")
@@ -302,7 +304,8 @@ class ParseGffFileWrapper(luigi.WrapperTask):
                    save_job_info=SAVE_JOB_INFO,
                    resource_flag=RESOURCE_FLAG_MERGE,
                    memory_flag=MEMORY_FLAG_MERGE,
-                   user_python_path=self.user_python_path
+                   tmp_dir=self.tmp_dir
+
                 )
 
     def get_seq_region_from_refseq_accession(self, refseq_accession):
@@ -324,7 +327,7 @@ if __name__ == "__main__":
     PARSER = argparse.ArgumentParser(
         description="RefSeq Loader Pipeline Wrapper")
     PARSER.add_argument("--download_dir", default="/tmp", help="Path to where the downloaded files should be saved")
-    PARSER.add_argument("--python_path", default=sys.executable, help="")
+    PARSER.add_argument("--tmp_dir", default="/tmp", help="TMP dir")
 
     # Get the matching parameters from the command line
     ARGS = PARSER.parse_args()
@@ -333,7 +336,7 @@ if __name__ == "__main__":
         [
             ParseGffFileWrapper(
                 download_dir=ARGS.download_dir,
-                user_python_path=ARGS.python_path
+                tmp_dir=ARGS.tmp_dir
             )
         ],
         workers=25, local_scheduler=True)
