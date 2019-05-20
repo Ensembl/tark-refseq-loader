@@ -29,10 +29,21 @@ from handlers.refseq.checksumhandler import ChecksumHandler
 from handlers.refseq.genbankhandler import GenBankHandler
 from handlers.refseq.fastahandler import FastaHandler
 from handlers.refseq.confighandler import ConfigHandler
+from luigi.contrib.lsf import LSFJobTask
+import sys
+
+
+SHARED_TMP_DIR = ""
+RESOURCE_FLAG_ALIGNMENT = "mem=16384"
+MEMORY_FLAG_ALIGNMENT = "16384"
+RESOURCE_FLAG_MERGE = "mem=16384"
+MEMORY_FLAG_MERGE = "16384"
+QUEUE_FLAG = "production-rh7"
+SAVE_JOB_INFO = False
 
 
 #class ParseRecord(luigi.Task):
-class ParseRecord(LocalLSFJobTask):
+class ParseRecord(LSFJobTask):
     download_dir = luigi.Parameter()
     downloaded_files = luigi.DictParameter()
     seq_region = luigi.Parameter()
@@ -54,7 +65,7 @@ class ParseRecord(LocalLSFJobTask):
         status_file = status_dir + '/' + 'status_file_chr' + str(self.seq_region)
         return luigi.LocalTarget(status_file)
 
-    def run(self):
+    def work(self):
 
         print("Loading gbff.....")
         print(self.downloaded_files['gbff'])
@@ -199,6 +210,7 @@ class ParseGffFileWrapper(luigi.WrapperTask):
     genbank_file = 'GCF_000001405.38_GRCh38.p12_rna.gbff'
     fasta_file = 'GCF_000001405.38_GRCh38.p12_rna.fna'
     protein_file = 'GCF_000001405.38_GRCh38.p12_protein.faa'
+    user_python_path = luigi.Parameter()
 
     def requires(self):
         downloaded_files = {}
@@ -280,7 +292,13 @@ class ParseGffFileWrapper(luigi.WrapperTask):
                    seq_region=str(seq_region),
                    parent_ids=parent_ids,
                    limits=limits,
-                   dryrun=dryrun
+                   dryrun=dryrun,
+                   user_shared_tmp_dir=SHARED_TMP_DIR,
+                   user_queue_flag=QUEUE_FLAG,
+                   user_save_job_info=SAVE_JOB_INFO,
+                   user_resource_flag=RESOURCE_FLAG_MERGE,
+                   user_memory_flag=MEMORY_FLAG_MERGE,
+                   user_python_path=self.user_python_path
                 )
 
     def get_seq_region_from_refseq_accession(self, refseq_accession):
@@ -302,6 +320,7 @@ if __name__ == "__main__":
     PARSER = argparse.ArgumentParser(
         description="RefSeq Loader Pipeline Wrapper")
     PARSER.add_argument("--download_dir", default="/tmp", help="Path to where the downloaded files should be saved")
+    PARSER.add_argument("--python_path", default=sys.executable, help="")
 
     # Get the matching parameters from the command line
     ARGS = PARSER.parse_args()
@@ -310,6 +329,7 @@ if __name__ == "__main__":
         [
             ParseGffFileWrapper(
                 download_dir=ARGS.download_dir,
+                user_python_path=ARGS.python_path
             )
         ],
         workers=25, local_scheduler=False)

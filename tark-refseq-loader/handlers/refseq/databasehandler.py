@@ -47,7 +47,7 @@ class DatabaseHandler(object):
         }
 
         self.cnxpool = pooling_connector.MySQLConnectionPool(pool_name=mypool_name,
-                                                             pool_size=3,
+                                                             pool_size=8,
                                                              pool_reset_session=True,
                                                              **mydbconfig)
 
