@@ -208,6 +208,7 @@ class ParseGffFileWrapper(luigi.WrapperTask):
 
     download_dir = luigi.Parameter()
     tmp_dir = luigi.Parameter()
+    user_python_path = luigi.Parameter()
     gff_file = 'GCF_000001405.38_GRCh38.p12_genomic.gff'
     genbank_file = 'GCF_000001405.38_GRCh38.p12_rna.gbff'
     fasta_file = 'GCF_000001405.38_GRCh38.p12_rna.fna'
@@ -305,7 +306,8 @@ class ParseGffFileWrapper(luigi.WrapperTask):
                    save_job_info=SAVE_JOB_INFO,
                    resource_flag=RESOURCE_FLAG_MERGE,
                    memory_flag=MEMORY_FLAG_MERGE,
-                   shared_tmp_dir=self.tmp_dir
+                   shared_tmp_dir=self.tmp_dir,
+                   extra_bsub_args=self.user_python_path
 
                 )
 
@@ -329,6 +331,7 @@ if __name__ == "__main__":
         description="RefSeq Loader Pipeline Wrapper")
     PARSER.add_argument("--download_dir", default="/tmp", help="Path to where the downloaded files should be saved")
     PARSER.add_argument("--tmp_dir", default="/tmp", help="TMP dir")
+    PARSER.add_argument("--user_python_path", default=".", help="python path")
 
     # Get the matching parameters from the command line
     ARGS = PARSER.parse_args()
@@ -337,7 +340,8 @@ if __name__ == "__main__":
         [
             ParseGffFileWrapper(
                 download_dir=ARGS.download_dir,
-                tmp_dir=ARGS.tmp_dir
+                tmp_dir=ARGS.tmp_dir,
+                user_python_path=ARGS.user_python_path
             )
         ],
         workers=25, local_scheduler=True)
