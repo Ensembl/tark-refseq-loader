@@ -332,4 +332,4 @@ if __name__ == "__main__":
                 user_python_path=ARGS.python_path
             )
         ],
-        workers=25, local_scheduler=False)
+        workers=25, local_scheduler=True)
