@@ -207,6 +207,7 @@ class ParseGffFileWrapper(luigi.WrapperTask):
     """
 
     download_dir = luigi.Parameter()
+    tmp_dir = luigi.Parameter()
     gff_file = 'GCF_000001405.38_GRCh38.p12_genomic.gff'
     genbank_file = 'GCF_000001405.38_GRCh38.p12_rna.gbff'
     fasta_file = 'GCF_000001405.38_GRCh38.p12_rna.fna'
