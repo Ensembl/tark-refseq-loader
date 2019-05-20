@@ -41,8 +41,8 @@ QUEUE_FLAG = "production-rh7"
 SAVE_JOB_INFO = False
 
 
-#class ParseRecord(luigi.Task):
-class ParseRecord(LSFJobTask):
+class ParseRecord(luigi.Task):
+#class ParseRecord(LSFJobTask):
     download_dir = luigi.Parameter()
     downloaded_files = luigi.DictParameter()
     seq_region = luigi.Parameter()
@@ -65,7 +65,7 @@ class ParseRecord(LSFJobTask):
         status_file = status_dir + '/' + 'status_file_chr' + str(self.seq_region)
         return luigi.LocalTarget(status_file)
 
-    def work(self):
+    def run(self):
 
         print("Loading gbff.....")
         print(self.downloaded_files['gbff'])
@@ -301,13 +301,13 @@ class ParseGffFileWrapper(luigi.WrapperTask):
                    seq_region=str(seq_region),
                    parent_ids=parent_ids,
                    limits=limits,
-                   dryrun=dryrun,
-                   queue_flag=QUEUE_FLAG,
-                   save_job_info=SAVE_JOB_INFO,
-                   resource_flag=RESOURCE_FLAG_MERGE,
-                   memory_flag=MEMORY_FLAG_MERGE,
-                   shared_tmp_dir=self.tmp_dir,
-                   extra_bsub_args=self.user_python_path
+                   dryrun=dryrun
+#                    queue_flag=QUEUE_FLAG,
+#                    save_job_info=SAVE_JOB_INFO,
+#                    resource_flag=RESOURCE_FLAG_MERGE,
+#                    memory_flag=MEMORY_FLAG_MERGE,
+#                    shared_tmp_dir=self.tmp_dir,
+#                    extra_bsub_args=self.user_python_path
                 )
 
     def get_seq_region_from_refseq_accession(self, refseq_accession):
