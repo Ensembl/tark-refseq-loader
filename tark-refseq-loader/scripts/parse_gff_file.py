@@ -79,7 +79,7 @@ class ParseRecord(luigi.Task):
         #with open(self.downloaded_files['gff']) as gff_handle:
 
             # Chromosome seq level
-        for rec in GFF.parse(gff_handle, limit_info=self.limits):
+        for rec in GFF.parse(gff_handle, limit_info=self.limits, target_lines=1000):
 
             for gene_feature in rec.features:
 
@@ -201,6 +201,7 @@ class ParseGffFileWrapper(luigi.WrapperTask):
 
     download_dir = luigi.Parameter()
     dryrun = luigi.BoolParameter()
+    task_namespace = luigi.Parameter()
     gff_file = 'GCF_000001405.38_GRCh38.p12_genomic.gff'
     genbank_file = 'GCF_000001405.38_GRCh38.p12_rna.gbff'
     fasta_file = 'GCF_000001405.38_GRCh38.p12_rna.fna'
@@ -285,7 +286,8 @@ class ParseGffFileWrapper(luigi.WrapperTask):
                    seq_region=str(seq_region),
                    parent_ids=parent_ids,
                    limits=limits,
-                   dryrun=self.dryrun
+                   dryrun=self.dryrun,
+                   task_namespace='seq_region_namespace_chr' + str(seq_region)
                 )
 
     def get_seq_region_from_refseq_accession(self, refseq_accession):
