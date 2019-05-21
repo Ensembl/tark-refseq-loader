@@ -205,7 +205,7 @@ class ParseGffFileWrapper(luigi.WrapperTask):
     """
 
     download_dir = luigi.Parameter()
-    dryrun = luigi.Parameter()
+    dryrun = luigi.BoolParameter()
     gff_file = 'GCF_000001405.38_GRCh38.p12_genomic.gff'
     genbank_file = 'GCF_000001405.38_GRCh38.p12_rna.gbff'
     fasta_file = 'GCF_000001405.38_GRCh38.p12_rna.fna'
@@ -224,9 +224,8 @@ class ParseGffFileWrapper(luigi.WrapperTask):
         # load the parent tables
         parent_ids = None
         # use for debugging only
-        dryrun = False
 
-        if not dryrun:
+        if not self.dryrun:
             mydb_config = ConfigHandler().getInstance().get_section_config(section_name="DATABASE")
             parent_ids = DatabaseHandler(db_config=mydb_config,
                                          mypool_name="mypool_parentids").populate_parent_tables()
