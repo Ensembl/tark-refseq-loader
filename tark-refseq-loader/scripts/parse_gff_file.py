@@ -50,6 +50,7 @@ class ParseRecord(luigi.Task):
     limits = luigi.TupleParameter()
     dryrun = luigi.BoolParameter()
     status_file = None
+    task_namespace = 'luigi_namespace_' + seq_region
 
 
 
@@ -174,9 +175,6 @@ class ParseRecord(luigi.Task):
                 feature_object_to_save = {}
                 feature_object_to_save["gene"] = annotated_gene
 
-                # remove later
-                #if len(annotated_gene['transcripts']) > 0:
-                    #print(feature_object_to_save)
 
                 if not self.dryrun:
                     mydb_config = ConfigHandler().getInstance().get_section_config(section_name="DATABASE")
@@ -207,13 +205,11 @@ class ParseGffFileWrapper(luigi.WrapperTask):
     """
 
     download_dir = luigi.Parameter()
-    tmp_dir = luigi.Parameter()
-    user_python_path = luigi.Parameter()
+    dryrun = luigi.Parameter()
     gff_file = 'GCF_000001405.38_GRCh38.p12_genomic.gff'
     genbank_file = 'GCF_000001405.38_GRCh38.p12_rna.gbff'
     fasta_file = 'GCF_000001405.38_GRCh38.p12_rna.fna'
     protein_file = 'GCF_000001405.38_GRCh38.p12_protein.faa'
-    # user_python_path = luigi.Parameter()
 
     def requires(self):
         downloaded_files = {}
@@ -271,8 +267,8 @@ class ParseGffFileWrapper(luigi.WrapperTask):
         limits = dict()
         # for testing
         # filter_regions = None
-        filter_regions = ['1', '2']
-        # filter_regions = ['21', '22']
+        # filter_regions = ['1', '2']
+        filter_regions = ['22']
         for chrom_tuple in chromosomes:
             chrom = chrom_tuple[0]
             if not chrom.startswith("NC_"):
@@ -289,25 +285,13 @@ class ParseGffFileWrapper(luigi.WrapperTask):
 
             limits["gff_id"] = chrom_tuple
 
-            # resource_flag = (defaults to mem=8192)
-            # memory_flag = (defaults to 8192)
-            # queue_flag = (defaults to queue_name)
-            # runtime_flag = (defaults to 60)
-            # job_name_flag = (defaults to )
-
             yield ParseRecord(
                    download_dir=self.download_dir,
                    downloaded_files=downloaded_files,
                    seq_region=str(seq_region),
                    parent_ids=parent_ids,
                    limits=limits,
-                   dryrun=dryrun
-#                    queue_flag=QUEUE_FLAG,
-#                    save_job_info=SAVE_JOB_INFO,
-#                    resource_flag=RESOURCE_FLAG_MERGE,
-#                    memory_flag=MEMORY_FLAG_MERGE,
-#                    shared_tmp_dir=self.tmp_dir,
-#                    extra_bsub_args=self.user_python_path
+                   dryrun=self.dryrun
                 )
 
     def get_seq_region_from_refseq_accession(self, refseq_accession):
@@ -329,8 +313,7 @@ if __name__ == "__main__":
     PARSER = argparse.ArgumentParser(
         description="RefSeq Loader Pipeline Wrapper")
     PARSER.add_argument("--download_dir", default="/tmp", help="Path to where the downloaded files should be saved")
-    PARSER.add_argument("--tmp_dir", default="/tmp", help="TMP dir")
-    PARSER.add_argument("--user_python_path", default=".", help="python path")
+    PARSER.add_argument("--dryrun", default=".", help="Load to db or not")
 
     # Get the matching parameters from the command line
     ARGS = PARSER.parse_args()
@@ -339,8 +322,7 @@ if __name__ == "__main__":
         [
             ParseGffFileWrapper(
                 download_dir=ARGS.download_dir,
-                tmp_dir=ARGS.tmp_dir,
-                user_python_path=ARGS.user_python_path
+                dryrun=ARGS.dryrun,
             )
         ],
-        workers=25, local_scheduler=True)
+        workers=25, local_scheduler=False)
