@@ -50,12 +50,7 @@ class ParseRecord(luigi.Task):
     limits = luigi.TupleParameter()
     dryrun = luigi.BoolParameter()
     status_file = None
-    task_namespace = 'luigi_namespace_' + seq_region
 
-
-
-    # task_namespace = 'ParseGffFile'
-#
 #     def requires(self):
 #         return DownloadRefSeqSourceFile(self.download_dir, self.file_to_download, self.ftp_root)
 
