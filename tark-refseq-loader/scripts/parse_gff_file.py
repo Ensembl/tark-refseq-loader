@@ -176,7 +176,7 @@ class ParseRecord(luigi.Task):
                     dbh = DatabaseHandler(db_config=mydb_config,
                                              mypool_name="mypool_" + str(self.seq_region))
                     dbh.save_features_to_database(feature_object_to_save, self.parent_ids)
-                    dbh.cnxpool.close()
+                    # dbh.close()
 #                     if status is None:
 #                         print("====Feature not saved for " + str(self.parent_ids))
 
@@ -192,7 +192,7 @@ class ParseRecord(luigi.Task):
         status_handle.close()
 
 
-# time PYTHONPATH='.' python scripts/parse_gff_file.py --download_dir='/Users/prem/workspace/software/tmp/refseq_download_dir'
+# time PYTHONPATH='.' python scripts/parse_gff_file.py --download_dir='/Users/prem/workspace/software/tmp/refseq_download_dir' --workers=1 --limit_chr='22'
 # time PYTHONPATH='.' python scripts/parse_gff_file.py --download_dir='/hps/nobackup2/production/ensembl/prem/refseq_download' --python_path='/homes/prem/workspace/software/tark-refseq-loader/tark-refseq-loader'
 class ParseGffFileWrapper(luigi.WrapperTask):
     """
@@ -201,6 +201,8 @@ class ParseGffFileWrapper(luigi.WrapperTask):
 
     download_dir = luigi.Parameter()
     dryrun = luigi.BoolParameter()
+    limit_chr = luigi.Parameter()
+    
     gff_file = 'GCF_000001405.38_GRCh38.p12_genomic.gff'
     genbank_file = 'GCF_000001405.38_GRCh38.p12_rna.gbff'
     fasta_file = 'GCF_000001405.38_GRCh38.p12_rna.fna'
@@ -262,7 +264,7 @@ class ParseGffFileWrapper(luigi.WrapperTask):
         # for testing
         # filter_regions = None
         # filter_regions = ['1', '2']
-        filter_regions = ['22']
+        filter_regions = [self.limit_chr]
         for chrom_tuple in chromosomes:
             chrom = chrom_tuple[0]
             if not chrom.startswith("NC_"):
@@ -308,6 +310,8 @@ if __name__ == "__main__":
         description="RefSeq Loader Pipeline Wrapper")
     PARSER.add_argument("--download_dir", default="/tmp", help="Path to where the downloaded files should be saved")
     PARSER.add_argument("--dryrun", default=".", help="Load to db or not")
+    PARSER.add_argument("--workers", default="25", help="Workers")
+    PARSER.add_argument("--limit_chr", default="None", help="Limit the chr")
 
     # Get the matching parameters from the command line
     ARGS = PARSER.parse_args()
@@ -317,6 +321,7 @@ if __name__ == "__main__":
             ParseGffFileWrapper(
                 download_dir=ARGS.download_dir,
                 dryrun=ARGS.dryrun,
+                limit_chr=ARGS.limit_chr,
             )
         ],
-        workers=25, local_scheduler=False)
+        workers=ARGS.workers, local_scheduler=True)
