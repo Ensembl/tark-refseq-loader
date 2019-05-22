@@ -16,33 +16,18 @@
 """
 import luigi
 import os
-import wget
-from luigi.contrib.external_program import ExternalProgramTask
-from luigi.contrib.lsf import LocalLSFJobTask
-import subprocess
 from BCBio import GFF
 import argparse
 import re
 from handlers.refseq.annotationhandler import AnnotationHandler
-from handlers.refseq.databasehandler import DatabaseHandler
+from handlers.refseq.databasehandler import DatabaseHandler, FeatureHandler
 from handlers.refseq.checksumhandler import ChecksumHandler
-from handlers.refseq.genbankhandler import GenBankHandler
 from handlers.refseq.fastahandler import FastaHandler
 from handlers.refseq.confighandler import ConfigHandler
-from luigi.contrib.lsf import LSFJobTask
-import sys
-
-SHARED_TMP_DIR = ""
-RESOURCE_FLAG_ALIGNMENT = "mem=16384"
-MEMORY_FLAG_ALIGNMENT = "16384"
-RESOURCE_FLAG_MERGE = "mem=16384"
-MEMORY_FLAG_MERGE = "16384"
-QUEUE_FLAG = "production-rh7"
-SAVE_JOB_INFO = False
 
 
 class ParseRecord(luigi.Task):
-#class ParseRecord(LSFJobTask):
+
     download_dir = luigi.Parameter()
     downloaded_files = luigi.DictParameter()
     seq_region = luigi.Parameter()
@@ -50,9 +35,6 @@ class ParseRecord(luigi.Task):
     limits = luigi.TupleParameter()
     dryrun = luigi.BoolParameter()
     status_file = None
-
-#     def requires(self):
-#         return DownloadRefSeqSourceFile(self.download_dir, self.file_to_download, self.ftp_root)
 
     def output(self):
         status_dir = self.download_dir + '/' + 'status_logs'
@@ -66,7 +48,11 @@ class ParseRecord(luigi.Task):
         print("Loading gbff.....")
         print(self.downloaded_files['gbff'])
 
-        #sequence_handler = GenBankHandler(self.downloaded_files['gbff'])
+        mydb_config = ConfigHandler().getInstance().get_section_config(section_name="DATABASE")
+        dbh = DatabaseHandler(db_config=mydb_config,
+                              mypool_name="mypool_" + str(self.seq_region))
+        dbc = dbh.get_connection()
+
         sequence_handler = FastaHandler(self.downloaded_files['fasta'])
 
         print("Loading protein.....")
@@ -76,9 +62,8 @@ class ParseRecord(luigi.Task):
         print("Working on Seq region limit " + str(self.seq_region))
 
         gff_handle = open(self.downloaded_files['gff'])
-        #with open(self.downloaded_files['gff']) as gff_handle:
 
-            # Chromosome seq level
+        # Chromosome seq level
         for rec in GFF.parse(gff_handle, limit_info=self.limits, target_lines=1000):
 
             for gene_feature in rec.features:
@@ -157,8 +142,8 @@ class ParseRecord(luigi.Task):
                         protein_id = refseq_cds_list[0]['protein_id']
                         annotated_translation = AnnotationHandler.get_annotated_cds(protein_sequence_handler,
                                                                                     self.seq_region,
-                                                                      protein_id,
-                                                                      refseq_cds_list)
+                                                                                    protein_id,
+                                                                                    refseq_cds_list)
                         annotated_transcript['translation'] = annotated_translation
                     else:
                         annotated_transcript['translation'] = []
@@ -170,16 +155,12 @@ class ParseRecord(luigi.Task):
                 feature_object_to_save = {}
                 feature_object_to_save["gene"] = annotated_gene
 
+                if not self.dryrun and annotated_gene is not None and annotated_gene['stable_id'] is not None:
+                    print("About to load gene => " + str(annotated_gene['stable_id']))
+                    feature_handler = FeatureHandler(parent_ids=self.parent_ids, dbc=dbc)
+                    feature_handler.save_features_to_database(feature_object_to_save)
 
-                if not self.dryrun:
-                    mydb_config = ConfigHandler().getInstance().get_section_config(section_name="DATABASE")
-                    dbh = DatabaseHandler(db_config=mydb_config,
-                                             mypool_name="mypool_" + str(self.seq_region))
-                    dbh.save_features_to_database(feature_object_to_save, self.parent_ids)
-                    # dbh.close()
-#                     if status is None:
-#                         print("====Feature not saved for " + str(self.parent_ids))
-
+        dbc.close()
         gff_handle.close()
 
         print("About to write to the status file")
@@ -191,7 +172,7 @@ class ParseRecord(luigi.Task):
         status_handle.write("Done")
         status_handle.close()
 
-
+# time PYTHONPATH='.' python scripts/parse_gff_file.py --download_dir='/Users/prem/workspace/software/tmp/refseq_download_dir' --workers=1 --limit_chr='1' --dryrun=False
 # time PYTHONPATH='.' python scripts/parse_gff_file.py --download_dir='/Users/prem/workspace/software/tmp/refseq_download_dir' --workers=1 --limit_chr='22'
 # time PYTHONPATH='.' python scripts/parse_gff_file.py --download_dir='/hps/nobackup2/production/ensembl/prem/refseq_download' --python_path='/homes/prem/workspace/software/tark-refseq-loader/tark-refseq-loader'
 class ParseGffFileWrapper(luigi.WrapperTask):
@@ -201,8 +182,8 @@ class ParseGffFileWrapper(luigi.WrapperTask):
 
     download_dir = luigi.Parameter()
     dryrun = luigi.BoolParameter()
-    limit_chr = luigi.Parameter()
-    
+    limit_chr = luigi.ListParameter()
+
     gff_file = 'GCF_000001405.38_GRCh38.p12_genomic.gff'
     genbank_file = 'GCF_000001405.38_GRCh38.p12_rna.gbff'
     fasta_file = 'GCF_000001405.38_GRCh38.p12_rna.fna'
@@ -216,7 +197,7 @@ class ParseGffFileWrapper(luigi.WrapperTask):
         downloaded_files['gbff'] = self.download_dir + "/" + self.genbank_file
 
         # Examine for available regions
-        examiner = GFF.GFFExaminer()
+        # examiner = GFF.GFFExaminer()
 
         # load the parent tables
         parent_ids = None
@@ -224,8 +205,11 @@ class ParseGffFileWrapper(luigi.WrapperTask):
 
         if not self.dryrun:
             mydb_config = ConfigHandler().getInstance().get_section_config(section_name="DATABASE")
-            parent_ids = DatabaseHandler(db_config=mydb_config,
-                                         mypool_name="mypool_parentids").populate_parent_tables()
+            dbh = DatabaseHandler(db_config=mydb_config,
+                                  mypool_name="mypool_parentids")
+            print(dbh)
+            feature_handler = FeatureHandler(dbc=dbh.get_connection())
+            parent_ids = feature_handler.populate_parent_tables()
 
         print(downloaded_files['gff'])
 
@@ -263,8 +247,11 @@ class ParseGffFileWrapper(luigi.WrapperTask):
         limits = dict()
         # for testing
         # filter_regions = None
-        # filter_regions = ['1', '2']
-        filter_regions = [self.limit_chr]
+        filter_regions = ['21', '22']
+        # filter_regions = self.limit_chr
+        print("====FILTER REGIONS===")
+        print(filter_regions)
+        print("====FILTER REGIONS===")
         for chrom_tuple in chromosomes:
             chrom = chrom_tuple[0]
             if not chrom.startswith("NC_"):
@@ -311,10 +298,11 @@ if __name__ == "__main__":
     PARSER.add_argument("--download_dir", default="/tmp", help="Path to where the downloaded files should be saved")
     PARSER.add_argument("--dryrun", default=".", help="Load to db or not")
     PARSER.add_argument("--workers", default="25", help="Workers")
-    PARSER.add_argument("--limit_chr", default="None", help="Limit the chr")
+    PARSER.add_argument("--limit_chr", default=None, help="Limit the chr")
 
     # Get the matching parameters from the command line
     ARGS = PARSER.parse_args()
+    print(ARGS)
 
     luigi.build(
         [
@@ -324,4 +312,4 @@ if __name__ == "__main__":
                 limit_chr=ARGS.limit_chr,
             )
         ],
-        workers=ARGS.workers, local_scheduler=True)
+        workers=ARGS.workers, local_scheduler=True, parallel_scheduling=True, no_lock=True)

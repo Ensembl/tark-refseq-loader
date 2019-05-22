@@ -17,12 +17,13 @@
 
 from __future__ import print_function
 from datetime import datetime
-import mysql.connector.pooling as pooling_connector
 from handlers.refseq.confighandler import ConfigHandler
 from handlers.refseq.checksumhandler import ChecksumHandler
 import collections
 import logging
 import time
+from mysql.connector import errors
+import mysql.connector.pooling
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
@@ -31,7 +32,6 @@ logger = logging.getLogger(__name__)
 class DatabaseHandler(object):
 
     def __init__(self, db_config=None, mypool_name="mypool"):
-        self._mypool_name = mypool_name
 
         if db_config is None:
             db_config = ConfigHandler().getInstance().get_section_config(section_name="DATABASE")
@@ -46,176 +46,23 @@ class DatabaseHandler(object):
             "database": db_config.get("database")
         }
 
-        self.cnxpool = pooling_connector.MySQLConnectionPool(pool_name=mypool_name,
-                                                             pool_size=8,
-                                                             pool_reset_session=True,
-                                                             **mydbconfig)
+        connection_pool = mysql.connector.pooling.MySQLConnectionPool(pool_name=mypool_name,
+                                                                      pool_size=32,
+                                                                      pool_reset_session=True,
+                                                                      **mydbconfig)
+        print(connection_pool)
+        connection_obj = connection_pool.get_connection()
 
-    @property
-    def mypool_name(self):
-        return self._mypool_name
+        self.db_con = connection_obj
 
-    @mypool_name.setter
-    def mypool_name(self, mypool_name):
-        self._mypool_name = mypool_name
-
-    # later if you want to tweak the instance, do here
-    @staticmethod
-    def getInstance():
-        """static access method"""
-        return DatabaseHandler()
-#
-#     @staticmethod
-#     def getInstance():
-#         """static access method"""
-#         if DatabaseHandler.__instance is None:
-#             DatabaseHandler()
-#         return DatabaseHandler.__instance
-# 
-#     def __init__(self, db_config=None):
-#         if DatabaseHandler.__instance is not None:
-#             raise Exception("This class is a singleton")
-# 
-#         db_config = ConfigHandler().getInstance().get_section_config(section_name="DATABASE")
-# 
-#         logger.info("loading in to  " + db_config.get("database"))
-# 
-#         mydbconfig = {
-#             "user": db_config.get("user"),
-#             "password": db_config.get("pass"),
-#             "port": db_config.get("port"),
-#             "host": db_config.get("host"),
-#             "database": db_config.get("database")
-#         }
-#         self.cnxpool = pooling_connector.MySQLConnectionPool(pool_name="mypool",
-#                                                              **mydbconfig)
-# 
-#         DatabaseHandler.__instance = self
-
-
-    def execute_set_statements(self, set_statement):
+    def get_connection(self):
         try:
-            self.cnx = self.cnxpool.get_connection()
-            self.cur = self.cnx.cursor()
-            status = self.cur.execute(set_statement)
-            self.cnx.commit()
-            self.cnx.close()
-            self.cur.close()
-        except Exception as e:
-            logger.error('Failed to insert: ' + str(e))
-            exit(0)
-        return status
-
-    def insert_data(self, insert_sql, insert_data, FOREIGN_KEY_CHECKS=1):
-        checksum_keys = [key for key in list(insert_data.keys()) if "checksum" in key and insert_data[key] is None]
-
-        for key in checksum_keys:
-            if key in insert_sql:
-                sql_str = "X%(" + key + ")s"
-                sql_str_to_replace = "%(" + key + ")s"
-                insert_sql = insert_sql.replace(sql_str, sql_str_to_replace, 1)
-
-        row_id = None
-        try:
-            self.cnx = self.cnxpool.get_connection()
-            self.cur = self.cnx.cursor()
-            if FOREIGN_KEY_CHECKS == 0:
-                self.cur.execute("SET FOREIGN_KEY_CHECKS=0")
-
-            self.cur.execute(insert_sql, insert_data)
-            self.cnx.commit()
-            row_id = self.cur.lastrowid
-
-            if FOREIGN_KEY_CHECKS == 0:
-                self.cur.execute("SET FOREIGN_KEY_CHECKS=1")
-
-            self.cnx.close()
-            self.cur.close()
-        except Exception as e:
-            print('Failed to insert: ' + str(e))
-            exit(0)
-
-        return row_id
-
-    def save_features_to_database(self,  features, parent_ids):
-
-        print("===mypool_name===" + self.mypool_name)
-
-        session_id_ = parent_ids["session_id"]
-        assembly_id_ = parent_ids["assembly_id"]
-        release_id_ = parent_ids["release_id"]
-
-        feature_handler = FeatureHandler(session_id=session_id_, assembly_id=assembly_id_, release_id=release_id_,
-                                         mypool_name=self.mypool_name)
-        transcript_gene = feature_handler.add_features(features)
-        print(transcript_gene)
-        return transcript_gene
-
-    def populate_parent_tables(self, init_table_list=None):
-
-        if init_table_list is None:
-            init_table_list = ["session", "genome", "assembly", "assembly_alias", "release_source"]
-
-        session_id = None
-        genome_id = None
-        assembly_id = None
-
-        parent_ids = {}
-        if "session" in init_table_list:
-            session_id = SessionHandler().start_session("Refseq Client " + str(time.time()))
-            parent_ids['session_id'] = session_id
-            logger.info(".........Popultating SESSION table.........\n")
-
-        if "genome" in init_table_list:
-            genome_data = {"name": "homo_sapiens", "tax_id": str(9606), "session_id": str(session_id)}
-            genome_id = GenomeHandler().load_genome(genome_data)
-            parent_ids['genome_id'] = genome_id
-            logger.info(".........Popultating GENOME table.........\n")
-
-        if "assembly" in init_table_list:
-            assembly_data = {"genome_id": str(genome_id), "assembly_name": "GRCh38", "session_id": str(session_id)}
-            assembly_id = AssemblyHandler().load_assembly(assembly_data)
-            parent_ids['assembly_id'] = assembly_id
-            logger.info(".........Popultating ASSEMBLY table.........\n")
-
-        if "assembly_alias" in init_table_list:
-            assembly_alias_data = {"alias": "GCA_000001405.25", "genome_id": str(genome_id),
-                                   "assembly_id": str(assembly_id), "session_id": str(session_id)}
-            assembly_alias_id = AssemblyHandler().load_assembly_alias(assembly_alias_data)
-            parent_ids['assembly_alias_id'] = assembly_alias_id
-            logger.info(".........Popultating ASSEMBLY ALIAS table.........\n")
-
-        if "release_source" in init_table_list:
-            release_source = {"shortname": "Ensembl", "description": "Ensembl data imports from Human Core DBs"}
-            release_source_ensembl = ReleaseSourceHandler().load_release_source(release_source)
-            parent_ids['release_source_ensembl'] = release_source_ensembl
-            logger.info(".........Popultating RELEASE SOURCE table.........\n")
-
-            release_source = {"shortname": "RefSeq", "description": "RefSeq data imports from RefSeq GFF"}
-            release_source_refseq = ReleaseSourceHandler().load_release_source(release_source)
-            parent_ids['release_source_refseq'] = release_source_refseq
-            logger.info(".........Popultating REFSEQ table.........\n")
-
-        # load data_release_set
-        today = datetime.now().date()
-        default_config = ConfigHandler().getInstance().get_section_config()
-        data_release_set = collections.OrderedDict()
-        data_release_set["shortname"] = default_config["shortname"]
-        data_release_set["description"] = default_config["description"]
-        data_release_set["assembly_id"] = str(assembly_id)
-        data_release_set["release_date"] = str(today)
-        data_release_set["session_id"] = str(session_id)
-        data_release_set["source_id"] = str(release_source_refseq)
-        release_set_id = ReleaseHandler().load_release_set(assembly_id, session_id, data_release_set)
-        parent_ids['release_id'] = release_set_id
-
-        return parent_ids
+            return self.db_con
+        except errors.Error as e:
+            print(e)
 
 
-class SessionHandler(DatabaseHandler):
-
-    def __init__(self, mypool_name="mypool"):
-        super().__init__(mypool_name=mypool_name)
+class SessionHandler():
 
     def start_session(self, session_name="Refseq session", ):
         today = datetime.now().date()
@@ -234,10 +81,7 @@ class SessionHandler(DatabaseHandler):
         return session_id
 
 
-class ReleaseHandler(DatabaseHandler):
-
-    def __init__(self, mypool_name="mypool"):
-        super().__init__(mypool_name=mypool_name)
+class ReleaseHandler():
 
     def load_release_set(self, assembly_id, session_id, data_release_set=None):
         if data_release_set is None:
@@ -264,10 +108,7 @@ class ReleaseHandler(DatabaseHandler):
         return release_id
 
 
-class ReleaseSourceHandler(DatabaseHandler):
-
-    def __init__(self, mypool_name="mypool"):
-        super().__init__(mypool_name=mypool_name)
+class ReleaseSourceHandler():
 
     def load_release_source(self, release_source):
         insert_release_source = ("INSERT INTO release_source (shortname, description) VALUES \
@@ -277,10 +118,7 @@ class ReleaseSourceHandler(DatabaseHandler):
         return release_source_id
 
 
-class GenomeHandler(DatabaseHandler):
-
-    def __init__(self, mypool_name="mypool"):
-        super().__init__(mypool_name=mypool_name)
+class GenomeHandler():
 
     def load_genome(self, genome):
 
@@ -292,10 +130,7 @@ class GenomeHandler(DatabaseHandler):
         return genome_id
 
 
-class AssemblyHandler(DatabaseHandler):
-
-    def __init__(self, mypool_name="mypool"):
-        super().__init__(mypool_name=mypool_name)
+class AssemblyHandler():
 
     def load_assembly(self, assembly):
 
@@ -316,37 +151,80 @@ class AssemblyHandler(DatabaseHandler):
         return assembly_alias_id
 
 
-class FeatureHandler(DatabaseHandler):
+class FeatureHandler(SessionHandler, ReleaseHandler, ReleaseSourceHandler, GenomeHandler, AssemblyHandler):
 
-    def __init__(self, session_id=0, assembly_id=0, release_id=0, mypool_name="mypool"):
-        super().__init__(mypool_name=mypool_name)
-        self._session_id = session_id
-        self._assembly_id = assembly_id
-        self._release_id = release_id
+    def __init__(self, dbc, parent_ids=None):
+        self.dbc = dbc
 
-    @property
-    def session_id(self):
-        return self._session_id
+        if parent_ids is not None:
+            self.session_id = parent_ids["session_id"]
+            self.assembly_id = parent_ids["assembly_id"]
+            self.release_id = parent_ids["release_id"]
 
-    @session_id.setter
-    def session_id(self, session_id):
-        self._session_id = session_id
+    def populate_parent_tables(self, init_table_list=None):
 
-    @property
-    def assembly_id(self):
-        return self._assembly_id
+        if init_table_list is None:
+            init_table_list = ["session", "genome", "assembly", "assembly_alias", "release_source"]
 
-    @assembly_id.setter
-    def assembly_id(self, assembly_id):
-        self._assembly_id = assembly_id
+        session_id = None
+        genome_id = None
+        assembly_id = None
 
-    @property
-    def release_id(self):
-        return self._release_id
+        parent_ids = {}
+        if "session" in init_table_list:
+            session_id = self.start_session("Refseq Client " + str(time.time()))
+            parent_ids['session_id'] = session_id
+            print(".........Popultating SESSION table.........\n")
 
-    @release_id.setter
-    def release_id(self, release_id):
-        self._release_id = release_id
+        if "genome" in init_table_list:
+            genome_data = {"name": "homo_sapiens", "tax_id": str(9606), "session_id": str(session_id)}
+            genome_id = self.load_genome(genome_data)
+            parent_ids['genome_id'] = genome_id
+            print(".........Popultating GENOME table.........\n")
+
+        if "assembly" in init_table_list:
+            assembly_data = {"genome_id": str(genome_id), "assembly_name": "GRCh38", "session_id": str(session_id)}
+            assembly_id = self.load_assembly(assembly_data)
+            parent_ids['assembly_id'] = assembly_id
+            logger.info(".........Popultating ASSEMBLY table.........\n")
+
+        if "assembly_alias" in init_table_list:
+            assembly_alias_data = {"alias": "GCA_000001405.25", "genome_id": str(genome_id),
+                                   "assembly_id": str(assembly_id), "session_id": str(session_id)}
+            assembly_alias_id = self.load_assembly_alias(assembly_alias_data)
+            parent_ids['assembly_alias_id'] = assembly_alias_id
+            logger.info(".........Popultating ASSEMBLY ALIAS table.........\n")
+
+        if "release_source" in init_table_list:
+            release_source = {"shortname": "Ensembl", "description": "Ensembl data imports from Human Core DBs"}
+            release_source_ensembl = self.load_release_source(release_source)
+            parent_ids['release_source_ensembl'] = release_source_ensembl
+            logger.info(".........Popultating RELEASE SOURCE table.........\n")
+
+            release_source = {"shortname": "RefSeq", "description": "RefSeq data imports from RefSeq GFF"}
+            release_source_refseq = self.load_release_source(release_source)
+            parent_ids['release_source_refseq'] = release_source_refseq
+            logger.info(".........Popultating REFSEQ table.........\n")
+
+        # load data_release_set
+        today = datetime.now().date()
+        default_config = ConfigHandler().getInstance().get_section_config()
+        data_release_set = collections.OrderedDict()
+        data_release_set["shortname"] = default_config["shortname"]
+        data_release_set["description"] = default_config["description"]
+        data_release_set["assembly_id"] = str(assembly_id)
+        data_release_set["release_date"] = str(today)
+        data_release_set["session_id"] = str(session_id)
+        data_release_set["source_id"] = str(release_source_refseq)
+        release_set_id = self.load_release_set(assembly_id, session_id, data_release_set)
+        parent_ids['release_id'] = release_set_id
+
+        return parent_ids
+
+    def save_features_to_database(self,  features):
+        transcript_gene = self.add_features(features)
+        # print(transcript_gene)
+        return transcript_gene
 
     def add_features(self, features):
 
@@ -381,7 +259,7 @@ class FeatureHandler(DatabaseHandler):
                         ON DUPLICATE KEY UPDATE gene_id=LAST_INSERT_ID(gene_id)")
 
         gene_id = self.insert_data(insert_gene, gene_data,
-                                                                            FOREIGN_KEY_CHECKS=0)
+                                   FOREIGN_KEY_CHECKS=0)
 
         self.add_release_tag(feature_id=gene_id, feature_type="gene")
         return gene_id
@@ -480,7 +358,7 @@ class FeatureHandler(DatabaseHandler):
         translation_transcript_data = {"transcript_id": transcript_id, "translation_id": translation_id,
                                        "session_id": self.session_id}
         translation_transcript_id = self.insert_data(insert_translation,
-                                                                              translation_transcript_data)
+                                                     translation_transcript_data)
         return translation_transcript_id
 
     def add_transcript_gene(self, transcript_ids, gene_id):
@@ -507,7 +385,7 @@ class FeatureHandler(DatabaseHandler):
                                 VALUES \
                                 (%(feature_id)s,  %(release_id)s, %(session_id)s )")
         feature_release_tag_id = self.insert_data(insert_release_tag,  # @UnusedVariable
-                                                                           release_tag)
+                                                  release_tag)
 
     def add_exon_transcript(self, exon_ids, transcript_id):
         insert_exon_transcript = ("INSERT INTO exon_transcript (transcript_id, exon_id, exon_order, session_id)\
@@ -527,3 +405,35 @@ class FeatureHandler(DatabaseHandler):
                             VALUES (X%(seq_checksum)s, %(sequence)s, %(session_id)s)")
         seq_id = self.insert_data(insert_sequence, sequence_data)
         return seq_id
+
+    def insert_data(self, insert_sql, insert_data, FOREIGN_KEY_CHECKS=1):
+        checksum_keys = [key for key in list(insert_data.keys()) if "checksum" in key and insert_data[key] is None]
+
+        for key in checksum_keys:
+            if key in insert_sql:
+                sql_str = "X%(" + key + ")s"
+                sql_str_to_replace = "%(" + key + ")s"
+                insert_sql = insert_sql.replace(sql_str, sql_str_to_replace, 1)
+
+        row_id = None
+        try:
+            connection_pool = self.dbc
+            cursor = connection_pool.cursor()
+            if FOREIGN_KEY_CHECKS == 0:
+                cursor.execute("SET FOREIGN_KEY_CHECKS=0")
+
+            cursor = connection_pool.cursor()
+            cursor.execute(insert_sql, insert_data)
+            connection_pool.commit()
+            row_id = cursor.lastrowid
+
+            cursor = connection_pool.cursor()
+            if FOREIGN_KEY_CHECKS == 0:
+                cursor.execute("SET FOREIGN_KEY_CHECKS=1")
+
+        except Exception as e:
+            print('Failed to insert: ' + str(e))
+            print(insert_sql)
+            exit(0)
+
+        return row_id
