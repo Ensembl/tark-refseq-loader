@@ -246,8 +246,8 @@ class ParseGffFileWrapper(luigi.WrapperTask):
             ]
         limits = dict()
         # for testing
-        # filter_regions = None
-        filter_regions = ['21', '22']
+        filter_regions = None
+        # filter_regions = ['21', '22']
         # filter_regions = self.limit_chr
         print("====FILTER REGIONS===")
         print(filter_regions)
