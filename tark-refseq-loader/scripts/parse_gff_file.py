@@ -247,11 +247,6 @@ class ParseGffFileWrapper(luigi.WrapperTask):
         limits = dict()
         # for testing
         filter_regions = None
-        # filter_regions = ['21', '22']
-        # filter_regions = self.limit_chr
-        print("====FILTER REGIONS===")
-        print(filter_regions)
-        print("====FILTER REGIONS===")
         for chrom_tuple in chromosomes:
             chrom = chrom_tuple[0]
             if not chrom.startswith("NC_"):
@@ -261,7 +256,8 @@ class ParseGffFileWrapper(luigi.WrapperTask):
             seq_region = self.get_seq_region_from_refseq_accession(chrom)
 
             # Restrict only for filter_region
-            if filter_regions is not None:
+            if self.limit_chr is not None:
+                filter_regions = self.limit_chr
                 if str(seq_region) not in filter_regions:
                     print(" Skipping " + str(seq_region))
                     continue
