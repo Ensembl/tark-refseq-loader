@@ -3,7 +3,6 @@ __pycache__/
 *.py[cod]
 .project
 .pydevproject
-*.txt
 .python-version
 *.pyc
 env
