@@ -289,7 +289,7 @@ if __name__ == "__main__":
         description="RefSeq Loader Pipeline Wrapper")
     PARSER.add_argument("--download_dir", default="/tmp", help="Path to where the downloaded files should be saved")
     PARSER.add_argument("--dryrun", default=".", help="Load to db or not")
-    PARSER.add_argument("--workers", default="25", help="Workers")
+    PARSER.add_argument("--workers", default="4", help="Workers")
     PARSER.add_argument("--limit_chr", default=None, help="Limit the chr")
 
     # Get the matching parameters from the command line
