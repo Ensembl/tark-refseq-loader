@@ -15,7 +15,7 @@
    limitations under the License.
 """
 
-from Bio import SeqIO, SeqFeature
+from Bio import SeqIO
 from Bio.SeqFeature import SeqFeature, FeatureLocation
 from Bio.Seq import Seq
 from Bio.Alphabet import generic_dna
@@ -71,8 +71,7 @@ class GenBankHandler():
     def get_exon_sequences_by_identifier(self, identifier):
         print("get_exon_sequences_by_identifier " + str(identifier))
         seq_record = self.get_seq_record_by_id(identifier)
-        print("=========seq record========")
-        print(seq_record)
+
         if seq_record is None:
             return None
         exon_sequences = []

@@ -93,7 +93,7 @@ class AnnotationHandler(object):
                                                                       int(exon['exon_strand']))
             exon_sequences.append(str(sequence))
         # exon_sequences = sequence_handler.get_exon_sequences_by_identifier(transcript_identifier)
-        #print(exon_sequences)
+        # print(exon_sequences)
         annotated_exons = []
 
         if exon_sequences is None:

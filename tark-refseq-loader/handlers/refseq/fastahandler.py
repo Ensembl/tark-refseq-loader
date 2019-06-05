@@ -64,7 +64,7 @@ class FastaHandler(object):
                 return None
 
     def get_seq_record_by_id_location(self, identifier, start=None, end=None, strand=None):
-        # print("Get sequence for identifier " + identifier  + " start " + str(start)  + "  end " + str(end) + "  strand " + str(strand))
+
         if self.fasta_handler is not None:
             if start is not None and end is not None:
                 seq_record = self.fasta_handler.get_seq(identifier, start, end)

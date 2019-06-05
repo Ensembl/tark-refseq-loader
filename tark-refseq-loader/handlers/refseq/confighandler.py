@@ -20,8 +20,7 @@ import os
 
 
 class ConfigHandler(object):
-    
-     # Here the instance will be stored
+
     __instance = None
 
     @staticmethod
@@ -41,17 +40,6 @@ class ConfigHandler(object):
         config.read(self.ini_file)
         self.config = config
         ConfigHandler.__instance = self
-# 
-# 
-#     def __init__(self, ini_file=None):
-#         if ini_file is None:
-#             self.ini_file = os.path.abspath(os.path.dirname(__file__)) + "/../../conf/refseq_source.ini"
-#         else:
-#             self.ini_file = ini_file
-# 
-#         config = configparser.ConfigParser()
-#         config.read(self.ini_file)
-#         self.config = config
 
     def get_section_config(self, section_name=None):
         if section_name is None:
