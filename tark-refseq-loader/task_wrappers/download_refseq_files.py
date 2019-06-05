@@ -18,7 +18,6 @@ import luigi
 import os
 import wget
 import subprocess
-from luigi.contrib.lsf import LSFJobTask
 
 
 class DownloadRefSeqSourceFile(luigi.Task):
@@ -87,11 +86,10 @@ class DownloadRefSeqSourceFiles(luigi.WrapperTask):
 
     ftp_root = 'http://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/latest_assembly_versions/GCF_000001405.38_GRCh38.p12'  # @IgnorePep8
     gff_file = 'GCF_000001405.38_GRCh38.p12_genomic.gff.gz'
-    genbank_file = 'GCF_000001405.38_GRCh38.p12_rna.gbff.gz'
     fasta_file = 'GCF_000001405.38_GRCh38.p12_rna.fna.gz'
     protein_file = 'GCF_000001405.38_GRCh38.p12_protein.faa.gz'
 
-    files_to_download = [gff_file, genbank_file, fasta_file, protein_file]
+    files_to_download = [gff_file, fasta_file, protein_file]
     # files_to_download = [gff_file]
 
     def complete(self):
