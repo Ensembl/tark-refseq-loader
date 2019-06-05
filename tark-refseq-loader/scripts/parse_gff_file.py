@@ -45,9 +45,6 @@ class ParseRecord(luigi.Task):
 
     def run(self):
 
-        print("Loading gbff.....")
-        print(self.downloaded_files['gbff'])
-
         mydb_config = ConfigHandler().getInstance().get_section_config(section_name="DATABASE")
         dbh = DatabaseHandler(db_config=mydb_config,
                               mypool_name="mypool_" + str(self.seq_region))
@@ -82,9 +79,6 @@ class ParseRecord(luigi.Task):
                         transcript_id = mRNA_feature.qualifiers['transcript_id'][0]
                     else:
                         continue
-
-#                         #if transcript_id != "NM_000417.2":
-#                             continue
 
                     refseq_exon_list = []
                     refseq_exon_order = 1
@@ -185,7 +179,6 @@ class ParseGffFileWrapper(luigi.WrapperTask):
     limit_chr = luigi.ListParameter()
 
     gff_file = 'GCF_000001405.38_GRCh38.p12_genomic.gff'
-    genbank_file = 'GCF_000001405.38_GRCh38.p12_rna.gbff'
     fasta_file = 'GCF_000001405.38_GRCh38.p12_rna.fna'
     protein_file = 'GCF_000001405.38_GRCh38.p12_protein.faa'
 
@@ -194,7 +187,6 @@ class ParseGffFileWrapper(luigi.WrapperTask):
         downloaded_files['gff'] = self.download_dir + "/" + self.gff_file
         downloaded_files['fasta'] = self.download_dir + "/" + self.fasta_file
         downloaded_files['protein'] = self.download_dir + "/" + self.protein_file
-        downloaded_files['gbff'] = self.download_dir + "/" + self.genbank_file
 
         # Examine for available regions
         # examiner = GFF.GFFExaminer()
@@ -257,7 +249,11 @@ class ParseGffFileWrapper(luigi.WrapperTask):
 
             # Restrict only for filter_region
             if self.limit_chr is not None:
-                filter_regions = self.limit_chr
+                if ',' in self.limit_chr:
+                    filter_regions = self.limit_chr.split(',')
+                else:
+                    filter_regions = [self.limit_chr]
+
                 if str(seq_region) not in filter_regions:
                     print(" Skipping " + str(seq_region))
                     continue
