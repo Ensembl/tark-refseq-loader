@@ -176,7 +176,7 @@ class ParseGffFileWrapper(luigi.WrapperTask):
 
     download_dir = luigi.Parameter()
     dryrun = luigi.BoolParameter()
-    limit_chr = luigi.ListParameter()
+    limit_chr = luigi.Parameter()
 
     gff_file = 'GCF_000001405.38_GRCh38.p12_genomic.gff'
     fasta_file = 'GCF_000001405.38_GRCh38.p12_rna.fna'
