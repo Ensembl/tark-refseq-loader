@@ -28,7 +28,7 @@ import argparse
 # Run the loader
 # time PYTHONPATH='.' python scripts/run_tark_loader.py --download_dir='/hps/nobackup2/production/ensembl/prem/refseq_download_92' @IgnorePep8
 
-class LoadRefSeq(luigi.WrapperTask):
+class LoadRefSeq(luigi.Task):
     """
     Pipeline for loading refseq source in to Tark database
     """

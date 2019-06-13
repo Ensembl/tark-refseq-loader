@@ -14,13 +14,18 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 """
-import luigi
+
 import os
-import wget
 import subprocess
 
+import luigi
+from luigi.contrib.lsf import LSFJobTask
+from luigi import WrapperTask
 
-class DownloadRefSeqSourceFile(luigi.Task):
+import wget
+
+
+class DownloadRefSeqSourceFile(LSFJobTask):
 
     download_dir = luigi.Parameter()
     file_to_download = luigi.Parameter()
@@ -51,7 +56,7 @@ class DownloadRefSeqSourceFile(luigi.Task):
         wget.download(file_url, self.download_dir)
 
 
-class UnzipRefSeqFile(luigi.Task):
+class UnzipRefSeqFile(LSFJobTask):
 
     download_dir = luigi.Parameter()
     file_to_download = luigi.Parameter()
@@ -76,7 +81,7 @@ class UnzipRefSeqFile(luigi.Task):
                           ])
 
 
-class DownloadRefSeqSourceFiles(luigi.WrapperTask):
+class DownloadRefSeqSourceFiles(WrapperTask):
     """
     Wrapper Task to download refseq gff files
     """
