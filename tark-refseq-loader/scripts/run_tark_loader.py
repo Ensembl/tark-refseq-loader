@@ -54,4 +54,4 @@ if __name__ == "__main__":
                 download_dir=ARGS.download_dir,
             )
         ],
-        workers=25, local_scheduler=True)
+        workers=4, local_scheduler=True)

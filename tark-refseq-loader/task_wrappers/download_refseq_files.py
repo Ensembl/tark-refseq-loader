@@ -18,6 +18,7 @@ import luigi
 import os
 import wget
 import subprocess
+from handlers.refseq.confighandler import ConfigHandler
 
 
 class DownloadRefSeqSourceFile(luigi.Task):
@@ -84,10 +85,32 @@ class DownloadRefSeqSourceFiles(luigi.WrapperTask):
     download_dir = luigi.Parameter()
     task_namespace = 'DownloadRefSeqSourceFiles'
 
-    ftp_root = 'http://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/latest_assembly_versions/GCF_000001405.38_GRCh38.p12'  # @IgnorePep8
-    gff_file = 'GCF_000001405.38_GRCh38.p12_genomic.gff.gz'
-    fasta_file = 'GCF_000001405.38_GRCh38.p12_rna.fna.gz'
-    protein_file = 'GCF_000001405.38_GRCh38.p12_protein.faa.gz'
+    assembly_id = ConfigHandler().getInstance().get_section_config()["assembly_id"]
+    assembly_name = ConfigHandler().getInstance().get_section_config()["assembly_name"]
+    source = ConfigHandler().getInstance().get_section_config()["source"]
+    shortname = ConfigHandler().getInstance().get_section_config()["shortname"]
+    description = ConfigHandler().getInstance().get_section_config()["description"]
+    print("Assembly ID " + str(assembly_id))
+    print("Assembly Name " + str(assembly_name))
+    print("source name " + str(source))
+    print("shortname " + str(shortname))
+    print("description  " + str(description))
+
+    ftp_root = ConfigHandler().getInstance().get_section_config()["ftp_root"]
+    gff_file = ConfigHandler().getInstance().get_section_config()["gff_file"]
+    fasta_file = ConfigHandler().getInstance().get_section_config()["fasta_file"]
+    protein_file = ConfigHandler().getInstance().get_section_config()["protein_file"]
+
+    print("ftp_root {}".format(ftp_root))
+    print("gff_file {}".format(gff_file))
+    print("fasta_file {}".format(fasta_file))
+    print("protein_file {}".format(protein_file))
+
+#     ftp_root = 'https://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/all_assembly_versions/GCF_000001405.38_GRCh38.p12/'
+#     #ftp_root = 'http://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/latest_assembly_versions/GCF_000001405.38_GRCh38.p12'  # @IgnorePep8
+#     gff_file = 'GCF_000001405.38_GRCh38.p12_genomic.gff.gz'
+#     fasta_file = 'GCF_000001405.38_GRCh38.p12_rna.fna.gz'
+#     protein_file = 'GCF_000001405.38_GRCh38.p12_protein.faa.gz'
 
     files_to_download = [gff_file, fasta_file, protein_file]
     # files_to_download = [gff_file]
