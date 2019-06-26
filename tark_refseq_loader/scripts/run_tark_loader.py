@@ -15,12 +15,12 @@
    limitations under the License.
 """
 
+import os
 import argparse
 import luigi
-import luigi
 
-from task_wrappers.download_refseq_files import DownloadRefSeqSourceFile
-from task_wrappers.download_refseq_files import UnzipRefSeqFile
+from tark_refseq_loader.task_wrappers.download_refseq_files import DownloadRefSeqSourceFile
+from tark_refseq_loader.task_wrappers.download_refseq_files import UnzipRefSeqFile
 
 
 # How to run?
@@ -37,13 +37,6 @@ class LoadRefSeq(luigi.Task):
     Pipeline for loading refseq source in to Tark database
     """
     download_dir = luigi.Parameter()
-
-    class DownloadRefSeqSourceFiles(WrapperTask):
-    """
-    Wrapper Task to download refseq gff files
-    """
-
-    download_dir = luigi.Parameter()
     task_namespace = 'DownloadRefSeqSourceFiles'
 
     ftp_root = 'http://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/latest_assembly_versions/GCF_000001405.39_GRCh38.p13'  # @IgnorePep8
@@ -52,38 +45,34 @@ class LoadRefSeq(luigi.Task):
     protein_file = 'GCF_000001405.39_GRCh38.p13_protein.faa.gz'
 
     files_to_download = [gff_file, fasta_file, protein_file]
-    # files_to_download = [gff_file]
 
-    # def complete(self):
-    #     complete_list = []
-    #     for file_ in self.files_to_download:
-    #         base = os.path.basename(file_)
-    #         downloaded_file_url_zipped = self.download_dir + '/' + file_
-    #         downloaded_file_url_unzipped = self.download_dir + '/' + os.path.splitext(base)[0]
-
-    #         if (
-    #                 os.path.exists(downloaded_file_url_zipped) and
-    #                 os.path.exists(downloaded_file_url_unzipped)
-    #         ):
-    #             complete_list.append(True)
-
-    #     if len(complete_list) == len(self.files_to_download):
-    #         return True
-    #     else:
-    #         return False
-
-    # def requires(self):
-    #     for file_ in self.files_to_download:
-    #         yield DownloadRefSeqSourceFile(
-    #             download_dir=self.download_dir,
-    #             file_to_download=file_,
-    #             ftp_root=self.ftp_root)
-
-    #         yield UnzipRefSeqFile(
-    #             download_dir=self.download_dir,
-    #             file_to_download=file_,
-    #             ftp_root=self.ftp_root
-    #         )
+    def output(self):
+        """
+        Returns
+        -------
+        output : luigi.LocalTarget()
+            Location of the RefSeq output files
+        """
+        gff_file_base = os.path.basename(self.gff_file)
+        fasta_file_base = os.path.basename(self.fasta_file)
+        protein_file_base = os.path.basename(self.protein_file)
+        downloaded_gff_file_unzipped = os.path.join(
+            self.download_dir,
+            os.path.splitext(gff_file_base)[0]
+        )
+        downloaded_fasta_file_unzipped = os.path.join(
+            self.download_dir,
+            os.path.splitext(fasta_file_base)[0]
+        )
+        downloaded_protein_file_unzipped = os.path.join(
+            self.download_dir,
+            os.path.splitext(protein_file_base)[0]
+        )
+        return [
+            luigi.LocalTarget(downloaded_gff_file_unzipped),
+            luigi.LocalTarget(downloaded_fasta_file_unzipped),
+            luigi.LocalTarget(downloaded_protein_file_unzipped)
+        ]
 
     def run(self):
         download_jobs = []
@@ -93,15 +82,17 @@ class LoadRefSeq(luigi.Task):
                 download_dir=self.download_dir,
                 file_to_download=file_,
                 ftp_root=self.ftp_root)
+            download_jobs.append(download)
 
             unzip = UnzipRefSeqFile(
                 download_dir=self.download_dir,
                 file_to_download=file_,
                 ftp_root=self.ftp_root
             )
+            unzip_jobs.append(unzip)
 
         yield download_jobs
-        yield unzip_jobss
+        yield unzip_jobs
 
 
 if __name__ == "__main__":
