@@ -16,6 +16,7 @@
 """
 
 import os
+import sys
 import argparse
 import luigi
 
@@ -32,14 +33,24 @@ from tark_refseq_loader.task_wrappers.download_refseq_files import UnzipRefSeqFi
 # Run the loader
 # time PYTHONPATH='.' python scripts/run_tark_loader.py --download_dir='/hps/nobackup2/production/ensembl/prem/refseq_download_92' @IgnorePep8
 
+SHARED_TMP_DIR = ""
+RESOURCE_FLAG_ALIGNMENT = "mem=4096"
+MEMORY_FLAG_ALIGNMENT = "4096"
+RESOURCE_FLAG_MERGE = "mem=4096"
+MEMORY_FLAG_MERGE = "4096"
+QUEUE_FLAG = "production-rh7"
+SAVE_JOB_INFO = False
+
+
 class LoadRefSeq(luigi.Task):
     """
     Pipeline for loading refseq source in to Tark database
     """
     download_dir = luigi.Parameter()
+    user_python_path = luigi.Parameter()
     task_namespace = 'DownloadRefSeqSourceFiles'
 
-    ftp_root = 'http://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/latest_assembly_versions/GCF_000001405.39_GRCh38.p13'  # @IgnorePep8
+    ftp_root = 'https://ftp.ncbi.nlm.nih.gov/genomes/refseq/vertebrate_mammalian/Homo_sapiens/latest_assembly_versions/GCF_000001405.39_GRCh38.p13'  # @IgnorePep8
     gff_file = 'GCF_000001405.39_GRCh38.p13_genomic.gff.gz'
     fasta_file = 'GCF_000001405.39_GRCh38.p13_rna.fna.gz'
     protein_file = 'GCF_000001405.39_GRCh38.p13_protein.faa.gz'
@@ -64,30 +75,41 @@ class LoadRefSeq(luigi.Task):
             self.download_dir,
             os.path.splitext(fasta_file_base)[0]
         )
-        downloaded_protein_file_unzipped = os.path.join(
+        downloaded_prot_file_unzipped = os.path.join(
             self.download_dir,
             os.path.splitext(protein_file_base)[0]
         )
         return [
             luigi.LocalTarget(downloaded_gff_file_unzipped),
             luigi.LocalTarget(downloaded_fasta_file_unzipped),
-            luigi.LocalTarget(downloaded_protein_file_unzipped)
+            luigi.LocalTarget(downloaded_prot_file_unzipped)
         ]
 
     def run(self):
         download_jobs = []
         unzip_jobs = []
         for file_ in self.files_to_download:
+            downloaded_file_zipped = os.path.join(self.download_dir, file_)
+
             download = DownloadRefSeqSourceFile(
-                download_dir=self.download_dir,
-                file_to_download=file_,
-                ftp_root=self.ftp_root)
+                downloaded_file=downloaded_file_zipped,
+                ftp_url=self.ftp_root + '/' + file_,
+                n_cpu_flag=1, shared_tmp_dir=SHARED_TMP_DIR, queue_flag=QUEUE_FLAG,
+                job_name_flag="download", save_job_info=SAVE_JOB_INFO,
+                extra_bsub_args=self.user_python_path
+            )
             download_jobs.append(download)
 
+            downloaded_file_unzipped = os.path.join(
+                self.download_dir,
+                os.path.splitext(os.path.basename(file_))[0]
+            )
             unzip = UnzipRefSeqFile(
-                download_dir=self.download_dir,
-                file_to_download=file_,
-                ftp_root=self.ftp_root
+                zipped_file=downloaded_file_zipped,
+                unzipped_file=downloaded_file_unzipped,
+                n_cpu_flag=1, shared_tmp_dir=SHARED_TMP_DIR, queue_flag=QUEUE_FLAG,
+                job_name_flag="unzip", save_job_info=SAVE_JOB_INFO,
+                extra_bsub_args=self.user_python_path
             )
             unzip_jobs.append(unzip)
 
@@ -100,14 +122,20 @@ if __name__ == "__main__":
     PARSER = argparse.ArgumentParser(
         description="RefSeq Loader Pipeline Wrapper")
     PARSER.add_argument("--download_dir", default="/tmp", help="Path to where the downloaded files should be saved")
+    PARSER.add_argument("--python_path", default=sys.executable, help="")
+    PARSER.add_argument("--shared_tmp_dir", help="")
 
     # Get the matching parameters from the command line
     ARGS = PARSER.parse_args()
+    SHARED_TMP_DIR = ARGS.shared_tmp_dir
 
     luigi.build(
         [
             LoadRefSeq(
                 download_dir=ARGS.download_dir,
+                user_python_path=ARGS.python_path
             )
         ],
-        workers=25, local_scheduler=True)
+        local_scheduler=True,
+        workers=25
+    )

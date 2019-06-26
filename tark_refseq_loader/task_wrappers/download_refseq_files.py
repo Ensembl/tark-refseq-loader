@@ -20,25 +20,23 @@ import subprocess
 
 import luigi
 from luigi.contrib.lsf import LSFJobTask
-# from luigi import WrapperTask
 
-import wget
+import requests
 
 
 class DownloadRefSeqSourceFile(LSFJobTask):
 
-    download_dir = luigi.Parameter()
-    file_to_download = luigi.Parameter()
-    ftp_root = luigi.Parameter()
+    downloaded_file = luigi.Parameter()
+    ftp_url = luigi.Parameter()
 
     task_namespace = 'DownloadRefSeqSourceFile'
 
     def output(self):
         return luigi.LocalTarget(
-            self.download_dir + '/' + self.file_to_download
+            self.download_file
         )
 
-    def run(self):
+    def work(self):
         """
         Worker function to download the file from refseq ftp source
         Parameters
@@ -51,30 +49,35 @@ class DownloadRefSeqSourceFile(LSFJobTask):
             Refseq ftp path
         """
 
-        if not os.path.exists(self.download_dir):
-            os.makedirs(self.download_dir)
+        if not os.path.exists(os.path.dirname(self.download_file)):
+            os.makedirs(self.download_file)
 
-        file_url = self.ftp_root + '/' + self.file_to_download
-        wget.download(file_url, self.download_dir)
+        with requests.get(self.ftp_url, stream=True) as refseq_stream:
+            refseq_stream.raise_for_status()
+            with open(self.downloaded_file, 'wb') as dl_file:
+                for chunk in refseq_stream.iter_content(chunk_size=8192):
+                    if chunk:
+                        dl_file.write(chunk)
 
 
 class UnzipRefSeqFile(LSFJobTask):
 
-    download_dir = luigi.Parameter()
-    file_to_download = luigi.Parameter()
-    ftp_root = luigi.Parameter()
+    zipped_file = luigi.Parameter()
+    unzipped_file = luigi.Parameter()
+
     task_namespace = 'UnzipRefSeqFile'
 
     def output(self):
-        base = os.path.basename(self.file_to_download)
-        downloaded_file_url_unzipped = self.download_dir + '/' + os.path.splitext(base)[0]
-        return luigi.LocalTarget(downloaded_file_url_unzipped)
-
-    def run(self):
-        downloaded_file = self.download_dir + '/' + self.file_to_download
-        subprocess.Popen(
-            [
-                "gunzip",
-                downloaded_file
-            ]
+        return luigi.LocalTarget(
+            self.unzipped_file
         )
+
+    def work(self):
+        with open(self.unzipped_file, 'w') as fp:
+            subprocess.run(
+                [
+                    "gunzip", "-c",
+                    self.zipped_file
+                ],
+                stdout=fp
+            )
