@@ -14,9 +14,12 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 """
-from task_wrappers.download_refseq_files import DownloadRefSeqSourceFiles
-import luigi
+
 import argparse
+import luigi
+from luigi import Task
+
+from task_wrappers.download_refseq_files import DownloadRefSeqSourceFiles
 
 
 # How to run?
@@ -28,7 +31,7 @@ import argparse
 # Run the loader
 # time PYTHONPATH='.' python scripts/run_tark_loader.py --download_dir='/hps/nobackup2/production/ensembl/prem/refseq_download_92' @IgnorePep8
 
-class LoadRefSeq(luigi.Task):
+class LoadRefSeq(Task):
     """
     Pipeline for loading refseq source in to Tark database
     """
@@ -36,8 +39,9 @@ class LoadRefSeq(luigi.Task):
 
     def requires(self):
         yield DownloadRefSeqSourceFiles(
-                download_dir=self.download_dir,
-                 )
+            download_dir=self.download_dir,
+        )
+
 
 if __name__ == "__main__":
     # Set up the command line parameters

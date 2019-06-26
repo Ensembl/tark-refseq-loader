@@ -14,11 +14,14 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 """
-import luigi
+
 import os
-from BCBio import GFF
 import argparse
 import re
+import luigi
+
+from BCBio import GFF
+
 from handlers.refseq.annotationhandler import AnnotationHandler
 from handlers.refseq.databasehandler import DatabaseHandler, FeatureHandler
 from handlers.refseq.checksumhandler import ChecksumHandler
@@ -50,7 +53,9 @@ class ParseRecord(luigi.Task):
                               mypool_name="mypool_" + str(self.seq_region))
         dbc = dbh.get_connection()
 
-        sequence_handler = FastaHandler(self.downloaded_files['fasta'])
+        sequence_handler = FastaHandler(
+            self.downloaded_files['fasta']
+        )
 
         print("Loading protein.....")
         print(self.downloaded_files['protein'])

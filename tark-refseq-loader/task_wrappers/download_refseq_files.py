@@ -34,7 +34,9 @@ class DownloadRefSeqSourceFile(LSFJobTask):
     task_namespace = 'DownloadRefSeqSourceFile'
 
     def output(self):
-        return luigi.LocalTarget(self.download_dir + '/' + self.file_to_download)
+        return luigi.LocalTarget(
+            self.download_dir + '/' + self.file_to_download
+        )
 
     def run(self):
         """
@@ -65,9 +67,10 @@ class UnzipRefSeqFile(LSFJobTask):
 
     def requires(self):
         return DownloadRefSeqSourceFile(
-                download_dir=self.download_dir,
-                file_to_download=self.file_to_download,
-                ftp_root=self.ftp_root)
+            download_dir=self.download_dir,
+            file_to_download=self.file_to_download,
+            ftp_root=self.ftp_root
+        )
 
     def output(self):
         base = os.path.basename(self.file_to_download)
@@ -76,9 +79,12 @@ class UnzipRefSeqFile(LSFJobTask):
 
     def run(self):
         downloaded_file = self.download_dir + '/' + self.file_to_download
-        subprocess.Popen(["gunzip",
-                          downloaded_file
-                          ])
+        subprocess.Popen(
+            [
+                "gunzip",
+                downloaded_file
+            ]
+        )
 
 
 class DownloadRefSeqSourceFiles(WrapperTask):
@@ -104,7 +110,10 @@ class DownloadRefSeqSourceFiles(WrapperTask):
             downloaded_file_url_zipped = self.download_dir + '/' + file_
             downloaded_file_url_unzipped = self.download_dir + '/' + os.path.splitext(base)[0]
 
-            if os.path.exists(downloaded_file_url_zipped) and os.path.exists(downloaded_file_url_unzipped):
+            if (
+                    os.path.exists(downloaded_file_url_zipped) and
+                    os.path.exists(downloaded_file_url_unzipped)
+            ):
                 complete_list.append(True)
 
         if len(complete_list) == len(self.files_to_download):
@@ -123,4 +132,4 @@ class DownloadRefSeqSourceFiles(WrapperTask):
                 download_dir=self.download_dir,
                 file_to_download=file_,
                 ftp_root=self.ftp_root
-                     )
+            )
