@@ -16,8 +16,8 @@
 """
 
 import re
-from handlers.refseq.checksumhandler import ChecksumHandler
-from handlers.refseq.confighandler import ConfigHandler
+from tark_refseq_loader.handlers.refseq.checksumhandler import ChecksumHandler
+from tark_refseq_loader.handlers.refseq.confighandler import ConfigHandler
 
 import logging
 from handlers.refseq.utils.exon_utils import ExonUtils
