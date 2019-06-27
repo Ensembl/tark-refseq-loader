@@ -54,7 +54,7 @@ class DownloadRefSeqSourceFile(LSFJobTask):
 
         with requests.get(self.ftp_url, stream=True) as refseq_stream:
             refseq_stream.raise_for_status()
-            with open(self.downloaded_file, 'wb') as dl_file:
+            with open(self.download_file, 'wb') as dl_file:
                 for chunk in refseq_stream.iter_content(chunk_size=8192):
                     if chunk:
                         dl_file.write(chunk)
