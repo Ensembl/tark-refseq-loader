@@ -92,7 +92,7 @@ class LoadRefSeq(luigi.Task):
             downloaded_file_zipped = os.path.join(self.download_dir, file_)
 
             download = DownloadRefSeqSourceFile(
-                downloaded_file=downloaded_file_zipped,
+                download_file=downloaded_file_zipped,
                 ftp_url=self.ftp_root + '/' + file_,
                 n_cpu_flag=1, shared_tmp_dir=SHARED_TMP_DIR, queue_flag=QUEUE_FLAG,
                 job_name_flag="download", save_job_info=SAVE_JOB_INFO,
