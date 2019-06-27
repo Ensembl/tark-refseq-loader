@@ -16,11 +16,11 @@
 """
 
 import re
+import logging
+
 from tark_refseq_loader.handlers.refseq.checksumhandler import ChecksumHandler
 from tark_refseq_loader.handlers.refseq.confighandler import ConfigHandler
-
-import logging
-from handlers.refseq.utils.exon_utils import ExonUtils
+from tark_refseq_loader.handlers.refseq.utils.exon_utils import ExonUtils
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
