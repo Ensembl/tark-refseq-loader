@@ -26,11 +26,12 @@ from luigi.contrib.lsf import LSFJobTask
 
 from BCBio import GFF
 
-from handlers.refseq.annotationhandler import AnnotationHandler
-from handlers.refseq.databasehandler import DatabaseHandler, FeatureHandler
-from handlers.refseq.checksumhandler import ChecksumHandler
-from handlers.refseq.fastahandler import FastaHandler
-from handlers.refseq.confighandler import ConfigHandler
+from tark_refseq_loader.handlers.refseq.annotationhandler import AnnotationHandler
+from tark_refseq_loader.handlers.refseq.databasehandler import DatabaseHandler
+from tark_refseq_loader.handlers.refseq.databasehandler import FeatureHandler
+from tark_refseq_loader.handlers.refseq.checksumhandler import ChecksumHandler
+from tark_refseq_loader.handlers.refseq.fastahandler import FastaHandler
+from tark_refseq_loader.handlers.refseq.confighandler import ConfigHandler
 
 SHARED_TMP_DIR = ""
 RESOURCE_FLAG_ALIGNMENT = "mem=4096"
@@ -60,7 +61,9 @@ class ParseRecord(LSFJobTask):
 
     def work(self):
 
-        mydb_config = ConfigHandler().getInstance().get_section_config(section_name="DATABASE")
+        mydb_config = ConfigHandler().getInstance().get_section_config(
+            section_name="DATABASE"
+        )
         dbh = DatabaseHandler(
             db_config=mydb_config,
             mypool_name="mypool_" + str(self.seq_region)
@@ -241,10 +244,11 @@ class ParseGffFileWrapper(luigi.Task):
 
         print(downloaded_files['gff'])
 
-        # You could examine the file to get the possible chr, initialising it to save some time
-        #         with open(downloaded_files['gff']) as gff_handle_examiner:
-        #             possible_limits = examiner.available_limits(gff_handle_examiner)
-        #             chromosomes = sorted(possible_limits["gff_id"].keys())
+        # You could examine the file to get the possible chr, initialising it
+        # to save some time
+        # ... with open(downloaded_files['gff']) as gff_handle_examiner:
+        #         possible_limits = examiner.available_limits(gff_handle_examiner)
+        #         chromosomes = sorted(possible_limits["gff_id"].keys())
         chromosomes = [
             ('NC_000001.11',),
             ('NC_000002.12',),
@@ -329,7 +333,7 @@ if __name__ == "__main__":
         description="RefSeq Loader Pipeline Wrapper")
     PARSER.add_argument("--download_dir", default="/tmp", help="Path to where the downloaded files should be saved")
     PARSER.add_argument("--dryrun", default=".", help="Load to db or not")
-    PARSER.add_argument("--workers", default="4", help="Workers")
+    PARSER.add_argument("--workers", default="25", help="Workers")
     PARSER.add_argument("--limit_chr", default=None, help="Limit the chr")
     PARSER.add_argument("--python_path", default=sys.executable, help="")
     PARSER.add_argument("--shared_tmp_dir", help="")
@@ -347,4 +351,8 @@ if __name__ == "__main__":
                 user_python_path=ARGS.python_path
             )
         ],
-        workers=ARGS.workers, local_scheduler=True, parallel_scheduling=True, no_lock=True)
+        workers=ARGS.workers,
+        local_scheduler=True,
+        # parallel_scheduling=True,
+        # no_lock=True
+    )
