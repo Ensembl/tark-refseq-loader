@@ -26,7 +26,7 @@ import requests
 
 class DownloadRefSeqSourceFile(LSFJobTask):
 
-    downloaded_file = luigi.Parameter()
+    download_file = luigi.Parameter()
     ftp_url = luigi.Parameter()
 
     task_namespace = 'DownloadRefSeqSourceFile'
