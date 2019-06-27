@@ -16,9 +16,13 @@
 """
 
 import os
+import sys
 import argparse
 import re
+
 import luigi
+from luigi.contrib.lsf import LSFJobTask
+
 
 from BCBio import GFF
 
@@ -28,8 +32,16 @@ from handlers.refseq.checksumhandler import ChecksumHandler
 from handlers.refseq.fastahandler import FastaHandler
 from handlers.refseq.confighandler import ConfigHandler
 
+SHARED_TMP_DIR = ""
+RESOURCE_FLAG_ALIGNMENT = "mem=4096"
+MEMORY_FLAG_ALIGNMENT = "4096"
+RESOURCE_FLAG_MERGE = "mem=4096"
+MEMORY_FLAG_MERGE = "4096"
+QUEUE_FLAG = "production-rh7"
+SAVE_JOB_INFO = False
 
-class ParseRecord(luigi.Task):
+
+class ParseRecord(LSFJobTask):
 
     download_dir = luigi.Parameter()
     downloaded_files = luigi.DictParameter()
@@ -46,11 +58,13 @@ class ParseRecord(luigi.Task):
         status_file = status_dir + '/' + 'status_file_chr' + str(self.seq_region)
         return luigi.LocalTarget(status_file)
 
-    def run(self):
+    def work(self):
 
         mydb_config = ConfigHandler().getInstance().get_section_config(section_name="DATABASE")
-        dbh = DatabaseHandler(db_config=mydb_config,
-                              mypool_name="mypool_" + str(self.seq_region))
+        dbh = DatabaseHandler(
+            db_config=mydb_config,
+            mypool_name="mypool_" + str(self.seq_region)
+        )
         dbc = dbh.get_connection()
 
         sequence_handler = FastaHandler(
@@ -117,16 +131,21 @@ class ParseRecord(luigi.Task):
                             refseq_cds_list.append(refseq_cds_dict)
                             refseq_cds_order += 1
 
-                    annotated_transcript = AnnotationHandler.get_annotated_transcript(sequence_handler,
-                                                                                      self.seq_region,
-                                                                                      mRNA_feature)
+                    annotated_transcript = AnnotationHandler.get_annotated_transcript(
+                        sequence_handler,
+                        self.seq_region,
+                        mRNA_feature
+                    )
 
                     # add sequence and other annotations
                     annotated_exons = []
                     if len(refseq_exon_list) > 0:
-                        annotated_exons = AnnotationHandler.get_annotated_exons(sequence_handler, self.seq_region,
-                                                                                transcript_id,
-                                                                                refseq_exon_list)
+                        annotated_exons = AnnotationHandler.get_annotated_exons(
+                            sequence_handler,
+                            self.seq_region,
+                            transcript_id,
+                            refseq_exon_list
+                        )
 
                         if annotated_exons is not None and len(annotated_exons) > 0:
 
@@ -139,10 +158,12 @@ class ParseRecord(luigi.Task):
                     annotated_translation = []
                     if len(refseq_cds_list) > 0:
                         protein_id = refseq_cds_list[0]['protein_id']
-                        annotated_translation = AnnotationHandler.get_annotated_cds(protein_sequence_handler,
-                                                                                    self.seq_region,
-                                                                                    protein_id,
-                                                                                    refseq_cds_list)
+                        annotated_translation = AnnotationHandler.get_annotated_cds(
+                            protein_sequence_handler,
+                            self.seq_region,
+                            protein_id,
+                            refseq_cds_list
+                        )
                         annotated_transcript['translation'] = annotated_translation
                     else:
                         annotated_transcript['translation'] = []
@@ -154,7 +175,11 @@ class ParseRecord(luigi.Task):
                 feature_object_to_save = {}
                 feature_object_to_save["gene"] = annotated_gene
 
-                if not self.dryrun and annotated_gene is not None and annotated_gene['stable_id'] is not None:
+                if (
+                        not self.dryrun
+                        and annotated_gene is not None
+                        and annotated_gene['stable_id'] is not None
+                ):
                     print("About to load gene => " + str(annotated_gene['stable_id']))
                     feature_handler = FeatureHandler(parent_ids=self.parent_ids, dbc=dbc)
                     feature_handler.save_features_to_database(feature_object_to_save)
@@ -171,10 +196,8 @@ class ParseRecord(luigi.Task):
         status_handle.write("Done")
         status_handle.close()
 
-# time PYTHONPATH='.' python scripts/parse_gff_file.py --download_dir='/Users/prem/workspace/software/tmp/refseq_download_dir' --workers=1 --limit_chr='1' --dryrun=False
-# time PYTHONPATH='.' python scripts/parse_gff_file.py --download_dir='/Users/prem/workspace/software/tmp/refseq_download_dir' --workers=1 --limit_chr='22'
-# time PYTHONPATH='.' python scripts/parse_gff_file.py --download_dir='/hps/nobackup2/production/ensembl/prem/refseq_download' --python_path='/homes/prem/workspace/software/tark-refseq-loader/tark-refseq-loader'
-class ParseGffFileWrapper(luigi.WrapperTask):
+
+class ParseGffFileWrapper(luigi.Task):
     """
     Wrapper Task to parse gff file
     """
@@ -182,16 +205,21 @@ class ParseGffFileWrapper(luigi.WrapperTask):
     download_dir = luigi.Parameter()
     dryrun = luigi.BoolParameter()
     limit_chr = luigi.Parameter()
+    user_python_path = luigi.Parameter()
 
     gff_file = 'GCF_000001405.38_GRCh38.p12_genomic.gff'
     fasta_file = 'GCF_000001405.38_GRCh38.p12_rna.fna'
     protein_file = 'GCF_000001405.38_GRCh38.p12_protein.faa'
 
-    def requires(self):
+    def output(self):
+        """
+        """
+
+    def run(self):
         downloaded_files = {}
-        downloaded_files['gff'] = self.download_dir + "/" + self.gff_file
-        downloaded_files['fasta'] = self.download_dir + "/" + self.fasta_file
-        downloaded_files['protein'] = self.download_dir + "/" + self.protein_file
+        downloaded_files['gff'] = os.path.join(self.download_dir, self.gff_file)
+        downloaded_files['fasta'] = os.path.join(self.download_dir, self.fasta_file)
+        downloaded_files['protein'] = os.path.join(self.download_dir, self.protein_file)
 
         # Examine for available regions
         # examiner = GFF.GFFExaminer()
@@ -202,8 +230,11 @@ class ParseGffFileWrapper(luigi.WrapperTask):
 
         if not self.dryrun:
             mydb_config = ConfigHandler().getInstance().get_section_config(section_name="DATABASE")
-            dbh = DatabaseHandler(db_config=mydb_config,
-                                  mypool_name="mypool_parentids")
+            dbh = DatabaseHandler(
+                db_config=mydb_config,
+                mypool_name="mypool_parentids"
+            )
+
             print(dbh)
             feature_handler = FeatureHandler(dbc=dbh.get_connection())
             parent_ids = feature_handler.populate_parent_tables()
@@ -240,10 +271,11 @@ class ParseGffFileWrapper(luigi.WrapperTask):
             ('NC_000023.11',),
             ('NC_000024.10',),
             ('NC_012920.1',)
-            ]
+        ]
         limits = dict()
         # for testing
         filter_regions = None
+        parse_jobs = []
         for chrom_tuple in chromosomes:
             chrom = chrom_tuple[0]
             if not chrom.startswith("NC_"):
@@ -265,14 +297,17 @@ class ParseGffFileWrapper(luigi.WrapperTask):
 
             limits["gff_id"] = chrom_tuple
 
-            yield ParseRecord(
-                   download_dir=self.download_dir,
-                   downloaded_files=downloaded_files,
-                   seq_region=str(seq_region),
-                   parent_ids=parent_ids,
-                   limits=limits,
-                   dryrun=self.dryrun
-                )
+            parse_job = ParseRecord(
+                download_dir=self.download_dir,
+                downloaded_files=downloaded_files,
+                seq_region=str(seq_region),
+                parent_ids=parent_ids,
+                limits=limits,
+                dryrun=self.dryrun
+            )
+            parse_jobs.append(parse_job)
+
+        yield parse_jobs
 
     def get_seq_region_from_refseq_accession(self, refseq_accession):
         matchObj = re.match( r'NC_(\d+)\.\d+', refseq_accession, re.M|re.I)  # @IgnorePep8
@@ -296,6 +331,8 @@ if __name__ == "__main__":
     PARSER.add_argument("--dryrun", default=".", help="Load to db or not")
     PARSER.add_argument("--workers", default="4", help="Workers")
     PARSER.add_argument("--limit_chr", default=None, help="Limit the chr")
+    PARSER.add_argument("--python_path", default=sys.executable, help="")
+    PARSER.add_argument("--shared_tmp_dir", help="")
 
     # Get the matching parameters from the command line
     ARGS = PARSER.parse_args()
@@ -307,6 +344,7 @@ if __name__ == "__main__":
                 download_dir=ARGS.download_dir,
                 dryrun=ARGS.dryrun,
                 limit_chr=ARGS.limit_chr,
+                user_python_path=ARGS.python_path
             )
         ],
         workers=ARGS.workers, local_scheduler=True, parallel_scheduling=True, no_lock=True)
