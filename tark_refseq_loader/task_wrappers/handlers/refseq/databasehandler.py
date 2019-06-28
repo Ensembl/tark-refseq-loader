@@ -17,8 +17,8 @@
 
 from __future__ import print_function
 from datetime import datetime
-from tark_refseq_loader.handlers.refseq.confighandler import ConfigHandler
-from tark_refseq_loader.handlers.refseq.checksumhandler import ChecksumHandler
+from tark_refseq_loader.task_wrappers.handlers.refseq.confighandler import ConfigHandler
+from tark_refseq_loader.task_wrappers.handlers.refseq.checksumhandler import ChecksumHandler
 import collections
 import logging
 import time
