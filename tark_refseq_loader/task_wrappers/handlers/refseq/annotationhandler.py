@@ -31,9 +31,10 @@ class AnnotationHandler(object):
     # ASSEMBLY_ID = ConfigHandler().getInstance().get_section_config()["assembly_id"]
     # ASSEMBLY_NAME = ConfigHandler().getInstance().get_section_config()["assembly_name"]
 
-    def __init__(self, config):
-        self.ASSEMBLY_ID = config.get_section_config()["assembly_id"]
-        self.ASSEMBLY_NAME = config.get_section_config()["assembly_name"]
+    @classmethod
+    def __init__(cls, config):
+        cls.ASSEMBLY_ID = config.get_section_config()["assembly_id"]
+        cls.ASSEMBLY_NAME = config.get_section_config()["assembly_name"]
 
     @classmethod
     def get_annotated_gene(cls, chrom, gene_feature):

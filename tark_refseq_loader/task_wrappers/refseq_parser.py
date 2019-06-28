@@ -49,7 +49,7 @@ class ParseRecord(LSFJobTask):
 
     def work(self):
 
-        mydb_config = self.config.get_section_config(
+        mydb_config = self.config.getInstance().get_section_config(
             section_name="DATABASE"
         )
         dbh = DatabaseHandler(

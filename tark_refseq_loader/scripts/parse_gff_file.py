@@ -72,9 +72,9 @@ class ParseGffFileWrapper(luigi.Task):
         mydb_config = None
 
         if not self.dryrun:
-            mydb_config = ConfigHandler().getInstance()
+            mydb_config = ConfigHandler()
             dbh = DatabaseHandler(
-                db_config=mydb_config.get_section_config(section_name="DATABASE"),
+                db_config=mydb_config.getInstance().get_section_config(section_name="DATABASE"),
                 mypool_name="mypool_parentids"
             )
 
