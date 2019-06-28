@@ -34,7 +34,7 @@ class ConfigHandler(object):
         if ini_file is None:
             self.ini_file = os.path.abspath(
                 os.path.dirname(__file__)
-            ) + "/../../conf/refseq_source.ini"
+            ) + "/../../../conf/refseq_source.ini"
         else:
             self.ini_file = ini_file
 
