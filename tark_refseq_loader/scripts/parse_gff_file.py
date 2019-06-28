@@ -69,10 +69,12 @@ class ParseGffFileWrapper(luigi.Task):
         parent_ids = None
         # use for debugging only
 
+        mydb_config = None
+
         if not self.dryrun:
-            mydb_config = ConfigHandler().getInstance().get_section_config(section_name="DATABASE")
+            mydb_config = ConfigHandler().getInstance()
             dbh = DatabaseHandler(
-                db_config=mydb_config,
+                db_config=mydb_config.get_section_config(section_name="DATABASE"),
                 mypool_name="mypool_parentids"
             )
 
@@ -146,6 +148,7 @@ class ParseGffFileWrapper(luigi.Task):
                 parent_ids=parent_ids,
                 limits=limits,
                 dryrun=self.dryrun,
+                config=mydb_config,
                 n_cpu_flag=1, shared_tmp_dir=SHARED_TMP_DIR, queue_flag=QUEUE_FLAG,
                 job_name_flag="parser", save_job_info=SAVE_JOB_INFO,
                 extra_bsub_args=self.user_python_path

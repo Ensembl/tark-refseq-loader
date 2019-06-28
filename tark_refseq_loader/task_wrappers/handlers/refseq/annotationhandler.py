@@ -19,7 +19,7 @@ import re
 import logging
 
 from tark_refseq_loader.task_wrappers.handlers.refseq.checksumhandler import ChecksumHandler
-from tark_refseq_loader.task_wrappers.handlers.refseq.confighandler import ConfigHandler
+# from tark_refseq_loader.task_wrappers.handlers.refseq.confighandler import ConfigHandler
 from tark_refseq_loader.task_wrappers.handlers.refseq.utils.exon_utils import ExonUtils
 
 # Get an instance of a logger
@@ -28,8 +28,12 @@ logger = logging.getLogger(__name__)
 
 class AnnotationHandler(object):
 
-    ASSEMBLY_ID = ConfigHandler().getInstance().get_section_config()["assembly_id"]
-    ASSEMBLY_NAME = ConfigHandler().getInstance().get_section_config()["assembly_name"]
+    # ASSEMBLY_ID = ConfigHandler().getInstance().get_section_config()["assembly_id"]
+    # ASSEMBLY_NAME = ConfigHandler().getInstance().get_section_config()["assembly_name"]
+
+    def __init__(self, config):
+        self.ASSEMBLY_ID = config.get_section_config()["assembly_id"]
+        self.ASSEMBLY_NAME = config.get_section_config()["assembly_name"]
 
     @classmethod
     def get_annotated_gene(cls, chrom, gene_feature):

@@ -26,7 +26,7 @@ from tark_refseq_loader.task_wrappers.handlers.refseq.databasehandler import Dat
 from tark_refseq_loader.task_wrappers.handlers.refseq.databasehandler import FeatureHandler
 from tark_refseq_loader.task_wrappers.handlers.refseq.checksumhandler import ChecksumHandler
 from tark_refseq_loader.task_wrappers.handlers.refseq.fastahandler import FastaHandler
-from tark_refseq_loader.task_wrappers.handlers.refseq.confighandler import ConfigHandler
+# from tark_refseq_loader.task_wrappers.handlers.refseq.confighandler import ConfigHandler
 
 
 class ParseRecord(LSFJobTask):
@@ -37,6 +37,7 @@ class ParseRecord(LSFJobTask):
     parent_ids = luigi.DictParameter()
     limits = luigi.TupleParameter()
     dryrun = luigi.BoolParameter()
+    config = luigi.Parameter()
     status_file = None
 
     def output(self):
@@ -48,7 +49,7 @@ class ParseRecord(LSFJobTask):
 
     def work(self):
 
-        mydb_config = ConfigHandler().getInstance().get_section_config(
+        mydb_config = self.config.get_section_config(
             section_name="DATABASE"
         )
         dbh = DatabaseHandler(
@@ -78,7 +79,10 @@ class ParseRecord(LSFJobTask):
                 if gene_feature.type == "region":
                     continue
 
-                annotated_gene = AnnotationHandler.get_annotated_gene(self.seq_region, gene_feature)
+                annotated_gene = AnnotationHandler.get_annotated_gene(
+                    self.seq_region,
+                    gene_feature
+                )
 
                 # gene level
                 annotated_transcripts = []
