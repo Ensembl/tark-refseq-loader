@@ -21,12 +21,12 @@ from luigi.contrib.lsf import LSFJobTask
 
 from BCBio import GFF
 
-from tark_refseq_loader.handlers.refseq.annotationhandler import AnnotationHandler
-from tark_refseq_loader.handlers.refseq.databasehandler import DatabaseHandler
-from tark_refseq_loader.handlers.refseq.databasehandler import FeatureHandler
-from tark_refseq_loader.handlers.refseq.checksumhandler import ChecksumHandler
-from tark_refseq_loader.handlers.refseq.fastahandler import FastaHandler
-from tark_refseq_loader.handlers.refseq.confighandler import ConfigHandler
+from tark_refseq_loader.task_wrappers.handlers.refseq.annotationhandler import AnnotationHandler
+from tark_refseq_loader.task_wrappers.handlers.refseq.databasehandler import DatabaseHandler
+from tark_refseq_loader.task_wrappers.handlers.refseq.databasehandler import FeatureHandler
+from tark_refseq_loader.task_wrappers.handlers.refseq.checksumhandler import ChecksumHandler
+from tark_refseq_loader.task_wrappers.handlers.refseq.fastahandler import FastaHandler
+from tark_refseq_loader.task_wrappers.handlers.refseq.confighandler import ConfigHandler
 
 
 class ParseRecord(LSFJobTask):
