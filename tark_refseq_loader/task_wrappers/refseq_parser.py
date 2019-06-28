@@ -19,7 +19,6 @@ import os
 import luigi
 from luigi.contrib.lsf import LSFJobTask
 
-
 from BCBio import GFF
 
 from tark_refseq_loader.handlers.refseq.annotationhandler import AnnotationHandler

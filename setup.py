@@ -22,7 +22,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
-        'pytest', 'pylint', 'Sphinx', 'luigi', 'dill', 'wget', 'bcbio-gff',
+        'pytest', 'Sphinx', 'luigi', 'dill', 'wget', 'bcbio-gff',
         'biopython', 'configparser', 'mysql-connector-python', 'pyfaidx',
     ],
     setup_requires=[
