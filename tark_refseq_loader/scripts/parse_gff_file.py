@@ -45,6 +45,7 @@ class ParseGffFileWrapper(luigi.Task):
     download_dir = luigi.Parameter()
     dryrun = luigi.BoolParameter()
     limit_chr = luigi.Parameter()
+    config_path = luigi.Parameter()
     user_python_path = luigi.Parameter()
 
     gff_file = 'GCF_000001405.39_GRCh38.p13_genomic.gff'
@@ -72,14 +73,19 @@ class ParseGffFileWrapper(luigi.Task):
         mydb_config = None
 
         if not self.dryrun:
-            mydb_config = ConfigHandler()
+            mydb_config = ConfigHandler(
+                ini_file=self.config_path
+            )
             dbh = DatabaseHandler(
                 db_config=mydb_config.getInstance().get_section_config(section_name="DATABASE"),
                 mypool_name="mypool_parentids"
             )
 
             # print(dbh)
-            feature_handler = FeatureHandler(dbc=dbh.get_connection())
+            feature_handler = FeatureHandler(
+                dbc=dbh.get_connection(),
+                ini_file=self.config_path
+            )
             parent_ids = feature_handler.populate_parent_tables()
 
         # print(downloaded_files['gff'])
@@ -148,7 +154,7 @@ class ParseGffFileWrapper(luigi.Task):
                 parent_ids=parent_ids,
                 limits=limits,
                 dryrun=self.dryrun,
-                config=mydb_config,
+                ini_file=self.config_path,
                 n_cpu_flag=1, shared_tmp_dir=SHARED_TMP_DIR, queue_flag=QUEUE_FLAG,
                 job_name_flag="parser", save_job_info=SAVE_JOB_INFO,
                 extra_bsub_args=self.user_python_path
@@ -179,6 +185,7 @@ if __name__ == "__main__":
     PARSER.add_argument("--dryrun", default=".", help="Load to db or not")
     PARSER.add_argument("--workers", default="4", help="Workers")
     PARSER.add_argument("--limit_chr", default=None, help="Limit the chr")
+    PARSER.add_argument("--ini_file", default=None, help="DB config ini file")
     PARSER.add_argument("--python_path", default=sys.executable, help="")
     PARSER.add_argument("--shared_tmp_dir", help="")
 
@@ -192,6 +199,7 @@ if __name__ == "__main__":
                 download_dir=ARGS.download_dir,
                 dryrun=ARGS.dryrun,
                 limit_chr=ARGS.limit_chr,
+                config_path=ARGS.ini_file,
                 user_python_path=ARGS.python_path
             )
         ],

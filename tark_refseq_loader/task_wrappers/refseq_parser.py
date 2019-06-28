@@ -26,7 +26,7 @@ from tark_refseq_loader.task_wrappers.handlers.refseq.databasehandler import Dat
 from tark_refseq_loader.task_wrappers.handlers.refseq.databasehandler import FeatureHandler
 from tark_refseq_loader.task_wrappers.handlers.refseq.checksumhandler import ChecksumHandler
 from tark_refseq_loader.task_wrappers.handlers.refseq.fastahandler import FastaHandler
-# from tark_refseq_loader.task_wrappers.handlers.refseq.confighandler import ConfigHandler
+from tark_refseq_loader.task_wrappers.handlers.refseq.confighandler import ConfigHandler
 
 
 class ParseRecord(LSFJobTask):
@@ -37,7 +37,7 @@ class ParseRecord(LSFJobTask):
     parent_ids = luigi.DictParameter()
     limits = luigi.TupleParameter()
     dryrun = luigi.BoolParameter()
-    config = luigi.Parameter()
+    ini_file = luigi.Parameter()
     status_file = None
 
     def output(self):
@@ -49,11 +49,12 @@ class ParseRecord(LSFJobTask):
 
     def work(self):
 
-        mydb_config = self.config.getInstance().get_section_config(
-            section_name="DATABASE"
-        )
+        config = ConfigHandler(ini_file=self.ini_file)
+        # mydb_config = config.getInstance().get_section_config(
+        #     section_name="DATABASE"
+        # )
         dbh = DatabaseHandler(
-            db_config=mydb_config,
+            ini_file=self.ini_file,
             mypool_name="mypool_" + str(self.seq_region)
         )
         dbc = dbh.get_connection()

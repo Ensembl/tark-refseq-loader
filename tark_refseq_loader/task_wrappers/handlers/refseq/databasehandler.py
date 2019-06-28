@@ -31,9 +31,14 @@ logger = logging.getLogger(__name__)
 
 class DatabaseHandler(object):
 
-    def __init__(self, db_config=None, mypool_name="mypool"):
+    def __init__(self, ini_file=None, db_config=None, mypool_name="mypool"):
 
-        if db_config is None:
+        if ini_file:
+            config = ConfigHandler(ini_file=ini_file)
+            db_config = config.getInstance().get_section_config(
+                section_name="DATABASE"
+            )
+        elif db_config is None:
             db_config = ConfigHandler().getInstance().get_section_config(
                 section_name="DATABASE"
             )
@@ -170,8 +175,9 @@ class FeatureHandler(
     AssemblyHandler
 ):
 
-    def __init__(self, dbc, parent_ids=None):
+    def __init__(self, dbc, parent_ids=None, ini_file=None):
         self.dbc = dbc
+        self.ini_file = ini_file
 
         if parent_ids is not None:
             self.session_id = parent_ids["session_id"]
@@ -247,6 +253,12 @@ class FeatureHandler(
         # load data_release_set
         today = datetime.now().date()
         default_config = ConfigHandler().getInstance().get_section_config()
+        if self.ini_file:
+            config = ConfigHandler(ini_file=self.ini_file)
+            default_config = config.getInstance().get_section_config()
+        else:
+            default_config = ConfigHandler().getInstance().get_section_config()
+
         data_release_set = collections.OrderedDict()
         data_release_set["shortname"] = default_config["shortname"]
         data_release_set["description"] = default_config["description"]
