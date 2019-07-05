@@ -39,12 +39,20 @@ class AnnotationHandler(object):
         gene['loc_end'] = str(gene_feature.location.end)
         gene['loc_strand'] = str(gene_feature.location.strand)
         gene['loc_region'] = str(chrom)
-        gene['stable_id'] = self.parse_qualifiers(gene_feature.qualifiers, "Dbxref", "GeneID")
+        gene['stable_id'] = self.parse_qualifiers(
+            gene_feature.qualifiers,
+            "Dbxref",
+            "GeneID"
+        )
         gene['stable_id_version'] = 1
         gene['assembly_id'] = self.ASSEMBLY_ID
         gene['assembly_name'] = self.ASSEMBLY_NAME
         # make it none for the moment, otherwise you will get integrity exception
-        hgnc_id = self.parse_qualifiers(gene_feature.qualifiers, "Dbxref", "HGNC:HGNC")
+        hgnc_id = self.parse_qualifiers(
+            gene_feature.qualifiers,
+            "Dbxref",
+            "HGNC:HGNC"
+        )
         if hgnc_id is not None:
             hgnc_id = "HGNC:" + hgnc_id
         gene['hgnc_id'] = hgnc_id
@@ -70,12 +78,21 @@ class AnnotationHandler(object):
         transcript['session_id'] = None
         transcript['transcript_checksum'] = None
         transcript['exon_set_checksum'] = None
-        transcript['loc_checksum'] = ChecksumHandler.get_location_checksum(transcript)
-        transcript['sequence'] = sequence_handler.get_sequence_by_id(mRNA_feature.qualifiers['transcript_id'][0])
-        transcript['seq_checksum'] = ChecksumHandler.get_seq_checksum(transcript, 'sequence')
+        transcript['loc_checksum'] = ChecksumHandler.get_location_checksum(
+            transcript
+        )
+        transcript['sequence'] = sequence_handler.get_sequence_by_id(
+            mRNA_feature.qualifiers['transcript_id'][0]
+        )
+        transcript['seq_checksum'] = ChecksumHandler.get_seq_checksum(
+            transcript,
+            'sequence'
+        )
         return transcript
 
-    def get_annotated_exons(self, sequence_handler, seq_region, transcript_identifier, refseq_exon_list):
+    def get_annotated_exons(
+            self, sequence_handler, seq_region, transcript_identifier,
+            refseq_exon_list):
         exon_sequences = []
 
         refseq_exon_list_relative_coordinates = ExonUtils.compute_exon_coordinates(refseq_exon_list.copy())
@@ -87,9 +104,12 @@ class AnnotationHandler(object):
         """
 
         for exon in refseq_exon_list_relative_coordinates:
-            sequence = sequence_handler.get_seq_record_by_id_location(transcript_identifier,
-                                                                      exon['exon_start'], exon['exon_end'],
-                                                                      int(exon['exon_strand']))
+            sequence = sequence_handler.get_seq_record_by_id_location(
+                transcript_identifier,
+                exon['exon_start'],
+                exon['exon_end'],
+                int(exon['exon_strand'])
+            )
             exon_sequences.append(str(sequence))
         # exon_sequences = sequence_handler.get_exon_sequences_by_identifier(transcript_identifier)
         # print(exon_sequences)
@@ -102,7 +122,11 @@ class AnnotationHandler(object):
             return None
 
         for exon_feature, exon_sequence in zip(refseq_exon_list, exon_sequences):
-            annotated_exons.append(self.get_annotated_exon(seq_region, exon_feature, exon_sequence))
+            annotated_exons.append(self.get_annotated_exon(
+                seq_region,
+                exon_feature,
+                exon_sequence
+            ))
 
         return annotated_exons
 
@@ -125,7 +149,8 @@ class AnnotationHandler(object):
 
         return exon
 
-    def get_annotated_cds(self, protein_sequence_handler, seq_region, protein_id, cds_list):
+    def get_annotated_cds(
+            self, protein_sequence_handler, seq_region, protein_id, cds_list):
 
         cds_strand = cds_list[0]['cds_strand']
         protein_id = cds_list[0]['protein_id']
@@ -142,7 +167,10 @@ class AnnotationHandler(object):
         translation['loc_strand'] = cds_strand
         translation['loc_region'] = seq_region
         translation['translation_seq'] = protein_sequence_handler.get_fasta_seq_by_id(protein_id)
-        translation['seq_checksum'] = ChecksumHandler.get_seq_checksum(translation, 'translation_seq')
+        translation['seq_checksum'] = ChecksumHandler.get_seq_checksum(
+            translation,
+            'translation_seq'
+        )
         translation['session_id'] = None
         translation['loc_checksum'] = ChecksumHandler.get_location_checksum(translation)
 
@@ -153,11 +181,19 @@ class AnnotationHandler(object):
     def get_translation_loc(self, cds_list):
         cds = cds_list[0]
         if(cds['cds_strand'] == '1'):
-            cds_start = [cds['cds_start'] for cds in cds_list if cds['cds_order'] == 1]
-            cds_end = [cds['cds_end'] for cds in cds_list if cds['cds_order'] == len(cds_list)]
+            cds_start = [
+                cds['cds_start'] for cds in cds_list if cds['cds_order'] == 1
+            ]
+            cds_end = [
+                cds['cds_end'] for cds in cds_list if cds['cds_order'] == len(cds_list)
+            ]
         elif(cds['cds_strand'] == '-1'):
-            cds_start = [cds['cds_start'] for cds in cds_list if cds['cds_order'] == len(cds_list)]
-            cds_end = [cds['cds_end'] for cds in cds_list if cds['cds_order'] == 1]
+            cds_start = [
+                cds['cds_start'] for cds in cds_list if cds['cds_order'] == len(cds_list)
+            ]
+            cds_end = [
+                cds['cds_end'] for cds in cds_list if cds['cds_order'] == 1
+            ]
 
         if len(cds_start) > 0 and len(cds_end) > 0:
             return (cds_start[0], cds_end[0])
@@ -170,30 +206,35 @@ class AnnotationHandler(object):
             for cur_qualifier in cur_qualifiers:
                 if attr is not None:
                     my_regex = attr + ":" + "(.*)"
-                    matchObj = re.match( my_regex, cur_qualifier, re.M|re.I)  # @IgnorePep8
-                    if matchObj and matchObj.group(1):
-                        attr_value = matchObj.group(1)
+                    match_obj = re.match(my_regex, cur_qualifier, re.M|re.I)  # @IgnorePep8
+                    if match_obj and match_obj.group(1):
+                        attr_value = match_obj.group(1)
                         return str(attr_value)
         return None
 
     def get_seq_region_from_refseq_accession(self, refseq_accession):
-        matchObj = re.match( r'NC_(\d+)\.\d+', refseq_accession, re.M|re.I)  # @IgnorePep8
+        match_obj = re.match(r'NC_(\d+)\.\d+', refseq_accession, re.M|re.I)  # @IgnorePep8
 
-        if matchObj and matchObj.group(1):
-            chrom = int(matchObj.group(1))
+        if match_obj and match_obj.group(1):
+            chrom = int(match_obj.group(1))
+
             if chrom == 23:
                 return "X"
             elif chrom == 24:
                 return "Y"
-            else:
-                return chrom
 
-    def add_feature_sequence(self, fasta_handler, feature_locations, feature_id, feature_type='exon'):
+            return chrom
+
+    def add_feature_sequence(
+            self, fasta_handler, feature_locations, feature_id,
+            feature_type='exon'):
         features_with_seq = []
         for feature in feature_locations:
-            feature_seq = fasta_handler.get_fasta_seq_by_id(feature_id,
-                                                            feature[feature_type + '_start'],
-                                                            feature[feature_type + '_end'])
+            feature_seq = fasta_handler.get_fasta_seq_by_id(
+                feature_id,
+                feature[feature_type + '_start'],
+                feature[feature_type + '_end']
+            )
             feature[feature_type + '_seq'] = feature_seq
             features_with_seq.append(feature)
         return features_with_seq

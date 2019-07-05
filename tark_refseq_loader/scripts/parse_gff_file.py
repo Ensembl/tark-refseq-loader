@@ -59,9 +59,18 @@ class ParseGffFileWrapper(luigi.Task):
 
     def run(self):
         downloaded_files = {}
-        downloaded_files['gff'] = os.path.join(self.download_dir, self.gff_file)
-        downloaded_files['fasta'] = os.path.join(self.download_dir, self.fasta_file)
-        downloaded_files['protein'] = os.path.join(self.download_dir, self.protein_file)
+        downloaded_files['gff'] = os.path.join(
+            self.download_dir,
+            self.gff_file
+        )
+        downloaded_files['fasta'] = os.path.join(
+            self.download_dir,
+            self.fasta_file
+        )
+        downloaded_files['protein'] = os.path.join(
+            self.download_dir,
+            self.protein_file
+        )
 
         # Examine for available regions
         # examiner = GFF.GFFExaminer()
@@ -77,7 +86,9 @@ class ParseGffFileWrapper(luigi.Task):
                 ini_file=self.config_path
             )
             dbh = DatabaseHandler(
-                db_config=mydb_config.getInstance().get_section_config(section_name="DATABASE"),
+                db_config=mydb_config.getInstance().get_section_config(
+                    section_name="DATABASE"
+                ),
                 mypool_name="mypool_parentids"
             )
 
@@ -177,11 +188,15 @@ class ParseGffFileWrapper(luigi.Task):
             else:
                 return chrom
 
+
 if __name__ == "__main__":
     # Set up the command line parameters
     PARSER = argparse.ArgumentParser(
         description="RefSeq Loader Pipeline Wrapper")
-    PARSER.add_argument("--download_dir", default="/tmp", help="Path to where the downloaded files should be saved")
+    PARSER.add_argument(
+        "--download_dir",
+        default="/tmp", help="Path to where the downloaded files should be saved"
+    )
     PARSER.add_argument("--dryrun", default=".", help="Load to db or not")
     PARSER.add_argument("--workers", default="4", help="Workers")
     PARSER.add_argument("--limit_chr", default=None, help="Limit the chr")
