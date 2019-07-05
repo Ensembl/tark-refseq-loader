@@ -71,8 +71,10 @@ class ParseRecord(LSFJobTask):
 
         gff_handle = open(self.downloaded_files['gff'])
 
+        annotation_handle = AnnotationHandler(self.ini_file)
+
         # Chromosome seq level
-        #for rec in GFF.parse(gff_handle, limit_info=self.limits, target_lines=1000):
+        # for rec in GFF.parse(gff_handle, limit_info=self.limits, target_lines=1000):
         for rec in GFF.parse(gff_handle, limit_info=self.limits):
 
             for gene_feature in rec.features:
@@ -81,7 +83,7 @@ class ParseRecord(LSFJobTask):
                 if gene_feature.type == "region":
                     continue
 
-                annotated_gene = AnnotationHandler.get_annotated_gene(
+                annotated_gene = annotation_handle.get_annotated_gene(
                     self.seq_region,
                     gene_feature
                 )
@@ -127,7 +129,7 @@ class ParseRecord(LSFJobTask):
                             refseq_cds_list.append(refseq_cds_dict)
                             refseq_cds_order += 1
 
-                    annotated_transcript = AnnotationHandler.get_annotated_transcript(
+                    annotated_transcript = annotation_handle.get_annotated_transcript(
                         sequence_handler,
                         self.seq_region,
                         mRNA_feature
@@ -136,7 +138,7 @@ class ParseRecord(LSFJobTask):
                     # add sequence and other annotations
                     annotated_exons = []
                     if len(refseq_exon_list) > 0:
-                        annotated_exons = AnnotationHandler.get_annotated_exons(
+                        annotated_exons = annotation_handle.get_annotated_exons(
                             sequence_handler,
                             self.seq_region,
                             transcript_id,
@@ -154,7 +156,7 @@ class ParseRecord(LSFJobTask):
                     annotated_translation = []
                     if len(refseq_cds_list) > 0:
                         protein_id = refseq_cds_list[0]['protein_id']
-                        annotated_translation = AnnotationHandler.get_annotated_cds(
+                        annotated_translation = annotation_handle.get_annotated_cds(
                             protein_sequence_handler,
                             self.seq_region,
                             protein_id,
