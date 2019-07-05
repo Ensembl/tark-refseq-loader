@@ -28,25 +28,23 @@ logger = logging.getLogger(__name__)
 
 class AnnotationHandler(object):
 
-    @classmethod
-    def __init__(cls, ini_file=None):
+    def __init__(self, ini_file=None):
         config = ConfigHandler(ini_file=ini_file)
-        cls.ASSEMBLY_ID = config.getInstance().get_section_config()["assembly_id"]
-        cls.ASSEMBLY_NAME = config.getInstance().get_section_config()["assembly_name"]
+        self.ASSEMBLY_ID = config.getInstance().get_section_config()["assembly_id"]
+        self.ASSEMBLY_NAME = config.getInstance().get_section_config()["assembly_name"]
 
-    @classmethod
-    def get_annotated_gene(cls, chrom, gene_feature):
+    def get_annotated_gene(self, chrom, gene_feature):
         gene = {}
         gene['loc_start'] = str(gene_feature.location.start)
         gene['loc_end'] = str(gene_feature.location.end)
         gene['loc_strand'] = str(gene_feature.location.strand)
         gene['loc_region'] = str(chrom)
-        gene['stable_id'] = cls.parse_qualifiers(gene_feature.qualifiers, "Dbxref", "GeneID")
+        gene['stable_id'] = self.parse_qualifiers(gene_feature.qualifiers, "Dbxref", "GeneID")
         gene['stable_id_version'] = 1
-        gene['assembly_id'] = cls.ASSEMBLY_ID
-        gene['assembly_name'] = cls.ASSEMBLY_NAME
+        gene['assembly_id'] = self.ASSEMBLY_ID
+        gene['assembly_name'] = self.ASSEMBLY_NAME
         # make it none for the moment, otherwise you will get integrity exception
-        hgnc_id = cls.parse_qualifiers(gene_feature.qualifiers, "Dbxref", "HGNC:HGNC")
+        hgnc_id = self.parse_qualifiers(gene_feature.qualifiers, "Dbxref", "HGNC:HGNC")
         if hgnc_id is not None:
             hgnc_id = "HGNC:" + hgnc_id
         gene['hgnc_id'] = hgnc_id
@@ -56,12 +54,11 @@ class AnnotationHandler(object):
         gene['gene_checksum'] = ChecksumHandler.get_gene_checksum(gene)
         return gene
 
-    @classmethod
-    def get_annotated_transcript(cls, sequence_handler, chrom, mRNA_feature):
+    def get_annotated_transcript(self, sequence_handler, chrom, mRNA_feature):
         transcript = {}
         # Note we have shifted one base here
-        transcript['assembly_id'] = cls.ASSEMBLY_ID
-        transcript['assembly_name'] = cls.ASSEMBLY_NAME
+        transcript['assembly_id'] = self.ASSEMBLY_ID
+        transcript['assembly_name'] = self.ASSEMBLY_NAME
         transcript['loc_start'] = str(mRNA_feature.location.start + 1)
         transcript['loc_end'] = str(mRNA_feature.location.end)
         transcript['loc_strand'] = str(mRNA_feature.location.strand)
@@ -78,17 +75,16 @@ class AnnotationHandler(object):
         transcript['seq_checksum'] = ChecksumHandler.get_seq_checksum(transcript, 'sequence')
         return transcript
 
-    @classmethod
-    def get_annotated_exons(cls, sequence_handler, seq_region, transcript_identifier, refseq_exon_list):
+    def get_annotated_exons(self, sequence_handler, seq_region, transcript_identifier, refseq_exon_list):
         exon_sequences = []
 
         refseq_exon_list_relative_coordinates = ExonUtils.compute_exon_coordinates(refseq_exon_list.copy())
-#         '''
-#         Ref: BioSeqFeature
-#         Note that the start and end location numbering follow Python's scheme,
-#         thus a GenBank entry of 123..150 (one based counting) becomes a location
-#         of [122:150] (zero based counting).
-#         '''
+        """
+        Ref: BioSeqFeature
+        Note that the start and end location numbering follow Python's scheme,
+        thus a GenBank entry of 123..150 (one based counting) becomes a location
+        of [122:150] (zero based counting).
+        """
 
         for exon in refseq_exon_list_relative_coordinates:
             sequence = sequence_handler.get_seq_record_by_id_location(transcript_identifier,
@@ -106,15 +102,14 @@ class AnnotationHandler(object):
             return None
 
         for exon_feature, exon_sequence in zip(refseq_exon_list, exon_sequences):
-            annotated_exons.append(cls.get_annotated_exon(seq_region, exon_feature, exon_sequence))
+            annotated_exons.append(self.get_annotated_exon(seq_region, exon_feature, exon_sequence))
 
         return annotated_exons
 
-    @classmethod
-    def get_annotated_exon(cls, seq_region, exon_feature, exon_sequence):
+    def get_annotated_exon(self, seq_region, exon_feature, exon_sequence):
         exon = {}
-        exon['assembly_id'] = cls.ASSEMBLY_ID
-        exon['assembly_name'] = cls.ASSEMBLY_NAME
+        exon['assembly_id'] = self.ASSEMBLY_ID
+        exon['assembly_name'] = self.ASSEMBLY_NAME
         exon['loc_start'] = exon_feature["exon_start"]
         exon['loc_end'] = exon_feature["exon_end"]
         exon['loc_strand'] = exon_feature["exon_strand"]
@@ -130,17 +125,16 @@ class AnnotationHandler(object):
 
         return exon
 
-    @classmethod
-    def get_annotated_cds(cls, protein_sequence_handler, seq_region, protein_id, cds_list):
+    def get_annotated_cds(self, protein_sequence_handler, seq_region, protein_id, cds_list):
 
         cds_strand = cds_list[0]['cds_strand']
         protein_id = cds_list[0]['protein_id']
         (stable_id, stable_id_version) = protein_id.split(".")
 
-        (translation_start, translation_end) = cls.get_translation_loc(cds_list)
+        (translation_start, translation_end) = self.get_translation_loc(cds_list)
         translation = {}
-        translation['assembly_id'] = cls.ASSEMBLY_ID
-        translation['assembly_name'] = cls.ASSEMBLY_NAME
+        translation['assembly_id'] = self.ASSEMBLY_ID
+        translation['assembly_name'] = self.ASSEMBLY_NAME
         translation['stable_id'] = stable_id
         translation['stable_id_version'] = stable_id_version
         translation['loc_start'] = translation_start
@@ -156,8 +150,7 @@ class AnnotationHandler(object):
 
         return translation
 
-    @classmethod
-    def get_translation_loc(cls, cds_list):
+    def get_translation_loc(self, cds_list):
         cds = cds_list[0]
         if(cds['cds_strand'] == '1'):
             cds_start = [cds['cds_start'] for cds in cds_list if cds['cds_order'] == 1]
@@ -171,8 +164,7 @@ class AnnotationHandler(object):
         else:
             return (0, 0)
 
-    @classmethod
-    def parse_qualifiers(cls, qualifiers, key_qualifier, attr=None):
+    def parse_qualifiers(self, qualifiers, key_qualifier, attr=None):
         if key_qualifier in qualifiers:
             cur_qualifiers = qualifiers[key_qualifier]
             for cur_qualifier in cur_qualifiers:
@@ -184,8 +176,7 @@ class AnnotationHandler(object):
                         return str(attr_value)
         return None
 
-    @classmethod
-    def get_seq_region_from_refseq_accession(cls, refseq_accession):
+    def get_seq_region_from_refseq_accession(self, refseq_accession):
         matchObj = re.match( r'NC_(\d+)\.\d+', refseq_accession, re.M|re.I)  # @IgnorePep8
 
         if matchObj and matchObj.group(1):
@@ -197,8 +188,7 @@ class AnnotationHandler(object):
             else:
                 return chrom
 
-    @classmethod
-    def add_feature_sequence(cls, fasta_handler, feature_locations, feature_id, feature_type='exon'):
+    def add_feature_sequence(self, fasta_handler, feature_locations, feature_id, feature_type='exon'):
         features_with_seq = []
         for feature in feature_locations:
             feature_seq = fasta_handler.get_fasta_seq_by_id(feature_id,

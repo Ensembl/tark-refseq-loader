@@ -35,7 +35,7 @@ class ParseRecord(LSFJobTask):
     downloaded_files = luigi.DictParameter()
     seq_region = luigi.Parameter()
     parent_ids = luigi.DictParameter()
-    limits = luigi.TupleParameter()
+    limits = luigi.DictParameter()
     dryrun = luigi.BoolParameter()
     ini_file = luigi.Parameter()
     status_file = None
@@ -72,7 +72,8 @@ class ParseRecord(LSFJobTask):
         gff_handle = open(self.downloaded_files['gff'])
 
         # Chromosome seq level
-        for rec in GFF.parse(gff_handle, limit_info=self.limits, target_lines=1000):
+        #for rec in GFF.parse(gff_handle, limit_info=self.limits, target_lines=1000):
+        for rec in GFF.parse(gff_handle, limit_info=self.limits):
 
             for gene_feature in rec.features:
 

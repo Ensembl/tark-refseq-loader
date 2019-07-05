@@ -88,7 +88,7 @@ class ParseGffFileWrapper(luigi.Task):
             )
             parent_ids = feature_handler.populate_parent_tables()
 
-        # print(downloaded_files['gff'])
+        # print(downloaded_files)
 
         # You could examine the file to get the possible chr, initialising it
         # to save some time
@@ -157,7 +157,7 @@ class ParseGffFileWrapper(luigi.Task):
                 ini_file=self.config_path,
                 n_cpu_flag=1, shared_tmp_dir=SHARED_TMP_DIR, queue_flag=QUEUE_FLAG,
                 job_name_flag="parser", save_job_info=SAVE_JOB_INFO,
-                extra_bsub_args=self.user_python_path
+                extra_bsub_args='-Is ' + self.user_python_path
             )
             parse_jobs.append(parse_job)
 

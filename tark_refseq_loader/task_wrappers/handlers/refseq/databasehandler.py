@@ -256,8 +256,6 @@ class FeatureHandler(
         if self.ini_file:
             config = ConfigHandler(ini_file=self.ini_file)
             default_config = config.getInstance().get_section_config()
-        else:
-            default_config = ConfigHandler().getInstance().get_section_config()
 
         data_release_set = collections.OrderedDict()
         data_release_set["shortname"] = default_config["shortname"]
