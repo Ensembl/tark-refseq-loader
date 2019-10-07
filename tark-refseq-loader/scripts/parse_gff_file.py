@@ -178,15 +178,21 @@ class ParseGffFileWrapper(luigi.WrapperTask):
     dryrun = luigi.BoolParameter()
     limit_chr = luigi.Parameter()
 
-    gff_file = 'GCF_000001405.38_GRCh38.p12_genomic.gff'
-    fasta_file = 'GCF_000001405.38_GRCh38.p12_rna.fna'
-    protein_file = 'GCF_000001405.38_GRCh38.p12_protein.faa'
+#     gff_file = 'GCF_000001405.38_GRCh38.p12_genomic.gff'
+#     fasta_file = 'GCF_000001405.38_GRCh38.p12_rna.fna'
+#     protein_file = 'GCF_000001405.38_GRCh38.p12_protein.faa'
 
     def requires(self):
+        mydefault_config = ConfigHandler().getInstance().get_section_config(section_name="DEFAULT")
+
+        (gff_filename, gff_file_extension) = os.path.splitext(mydefault_config['gff_file'])  # @UnusedVariable
+        (fasta_filename, fasta_file_extension) = os.path.splitext(mydefault_config['fasta_file'])  # @UnusedVariable
+        (protein_filename, protein_file_extension) = os.path.splitext(mydefault_config['protein_file'])  # @UnusedVariable
+
         downloaded_files = {}
-        downloaded_files['gff'] = self.download_dir + "/" + self.gff_file
-        downloaded_files['fasta'] = self.download_dir + "/" + self.fasta_file
-        downloaded_files['protein'] = self.download_dir + "/" + self.protein_file
+        downloaded_files['gff'] = self.download_dir + "/" + gff_filename
+        downloaded_files['fasta'] = self.download_dir + "/" + fasta_filename
+        downloaded_files['protein'] = self.download_dir + "/" + protein_filename
 
         # Examine for available regions
         # examiner = GFF.GFFExaminer()
