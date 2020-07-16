@@ -23,7 +23,7 @@ class FastaHandler(object):
     def __init__(self, fasta_file):
         self.fasta_file = fasta_file
         print("Loading fasta file...please wait...")
-        self.fasta_handler = Fasta(fasta_file, key_function = lambda x: x.split('|')[1], sequence_always_upper=True)
+        self.fasta_handler = Fasta(fasta_file, key_function = lambda x: x.split('|')[3], sequence_always_upper=True)
 
     def get_fasta_seq_by_location(self, chrom, start, end):
         if self.fasta_handler is not None:

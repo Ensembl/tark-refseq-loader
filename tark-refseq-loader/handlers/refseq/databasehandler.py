@@ -182,7 +182,7 @@ class FeatureHandler(SessionHandler, ReleaseHandler, ReleaseSourceHandler, Genom
             print(".........Popultating GENOME table.........\n")
 
         if "assembly" in init_table_list:
-            assembly_data = {"genome_id": str(genome_id), "assembly_name": "GRCh38", "session_id": str(session_id)}
+            assembly_data = {"genome_id": str(genome_id), "assembly_name": "GRCh37", "session_id": str(session_id)}
             assembly_id = self.load_assembly(assembly_data)
             parent_ids['assembly_id'] = assembly_id
             logger.info(".........Popultating ASSEMBLY table.........\n")
