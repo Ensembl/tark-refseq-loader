@@ -85,13 +85,12 @@ class ReleaseHandler():
 
     def load_release_set(self, assembly_id, session_id, data_release_set=None):
         if data_release_set is None:
-            today = datetime.now().date()
             default_config = ConfigHandler().getInstance().get_section_config()
             data_release_set = collections.OrderedDict()
             data_release_set["shortname"] = default_config["shortname"]
             data_release_set["description"] = default_config["description"]
             data_release_set["assembly_id"] = str(assembly_id)
-            data_release_set["release_date"] = str(today)
+            data_release_set["release_date"] = default_config["release_date"]
             data_release_set["session_id"] = str(session_id)
             data_release_set["source_id"] = default_config["source"]
 
@@ -183,7 +182,7 @@ class FeatureHandler(SessionHandler, ReleaseHandler, ReleaseSourceHandler, Genom
             print(".........Popultating GENOME table.........\n")
 
         if "assembly" in init_table_list:
-            assembly_data = {"genome_id": str(genome_id), "assembly_name": "GRCh38", "session_id": str(session_id)}
+            assembly_data = {"genome_id": str(genome_id), "assembly_name": "GRCh37", "session_id": str(session_id)}
             assembly_id = self.load_assembly(assembly_data)
             parent_ids['assembly_id'] = assembly_id
             logger.info(".........Popultating ASSEMBLY table.........\n")
@@ -207,13 +206,12 @@ class FeatureHandler(SessionHandler, ReleaseHandler, ReleaseSourceHandler, Genom
             logger.info(".........Popultating REFSEQ table.........\n")
 
         # load data_release_set
-        today = datetime.now().date()
         default_config = ConfigHandler().getInstance().get_section_config()
         data_release_set = collections.OrderedDict()
         data_release_set["shortname"] = default_config["shortname"]
         data_release_set["description"] = default_config["description"]
         data_release_set["assembly_id"] = str(assembly_id)
-        data_release_set["release_date"] = str(today)
+        data_release_set["release_date"] = default_config["release_date"]
         data_release_set["session_id"] = str(session_id)
         data_release_set["source_id"] = str(release_source_refseq)
         release_set_id = self.load_release_set(assembly_id, session_id, data_release_set)
