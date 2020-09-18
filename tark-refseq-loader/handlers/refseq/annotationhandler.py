@@ -43,7 +43,7 @@ class AnnotationHandler(object):
         gene['assembly_id'] = cls.ASSEMBLY_ID
         gene['assembly_name'] = cls.ASSEMBLY_NAME
         # make it none for the moment, otherwise you will get integrity exception
-        hgnc_id = cls.parse_qualifiers(gene_feature.qualifiers, "Dbxref", "HGNC:HGNC")
+        hgnc_id = cls.parse_qualifiers(gene_feature.qualifiers, "Dbxref", "HGNC")
         if hgnc_id is not None:
             hgnc_id = "HGNC:" + hgnc_id
         gene['hgnc_id'] = hgnc_id
