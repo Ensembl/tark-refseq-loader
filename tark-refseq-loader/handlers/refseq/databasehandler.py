@@ -248,12 +248,12 @@ class FeatureHandler(SessionHandler, ReleaseHandler, ReleaseSourceHandler, Genom
         gene_data = {k: v for (k, v) in gene.items() if k not in ["transcripts"]}
         gene_data["session_id"] = self.session_id
         gene_data["assembly_id"] = self.assembly_id
-
-        insert_gene = ("INSERT INTO gene (stable_id, stable_id_version, assembly_id, \
+        # populate biotype for gene
+        insert_gene = ("INSERT INTO gene (stable_id, stable_id_version, biotype, assembly_id, \
                         loc_region, loc_start, loc_end, loc_strand, loc_checksum, \
                         name_id, gene_checksum, session_id) \
                         VALUES (\
-                        %(stable_id)s, %(stable_id_version)s,  %(assembly_id)s, \
+                        %(stable_id)s, %(stable_id_version)s,  %(biotype)s,  %(assembly_id)s, \
                         %(loc_region)s, %(loc_start)s,  %(loc_end)s,  %(loc_strand)s,  X%(loc_checksum)s, \
                         %(hgnc_id)s,  X%(gene_checksum)s,  %(session_id)s) \
                         ON DUPLICATE KEY UPDATE gene_id=LAST_INSERT_ID(gene_id)")
@@ -265,13 +265,13 @@ class FeatureHandler(SessionHandler, ReleaseHandler, ReleaseSourceHandler, Genom
         return gene_id
 
     def add_transcripts(self, transcripts, gene_id):
-
-        insert_transcript = ("INSERT INTO transcript (stable_id, stable_id_version, assembly_id, \
+        # populate biotype for transcript
+        insert_transcript = ("INSERT INTO transcript (stable_id, stable_id_version, biotype, assembly_id, \
                             loc_region, loc_start, loc_end, loc_strand, loc_checksum, \
                             transcript_checksum, \
                             exon_set_checksum, seq_checksum, session_id) \
                             VALUES (\
-                            %(stable_id)s, %(stable_id_version)s, %(assembly_id)s, \
+                            %(stable_id)s, %(stable_id_version)s,  %(biotype)s, %(assembly_id)s, \
                             %(loc_region)s, %(loc_start)s, %(loc_end)s, %(loc_strand)s, X%(loc_checksum)s, \
                             X%(transcript_checksum)s, \
                             X%(exon_set_checksum)s, X%(seq_checksum)s, %(session_id)s) \
