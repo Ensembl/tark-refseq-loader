@@ -47,7 +47,11 @@ class AnnotationHandler(object):
         if hgnc_id is not None:
             hgnc_id = "HGNC:" + hgnc_id
         gene['hgnc_id'] = hgnc_id
-
+        # populate biotype for gene
+        if 'gene_biotype' in gene_feature.qualifiers:
+            gene['biotype'] = gene_feature.qualifiers['gene_biotype'][0]
+        else:
+            gene['biotype'] = None
         gene['session_id'] = None
         gene['loc_checksum'] = ChecksumHandler.get_location_checksum(gene)
         gene['gene_checksum'] = ChecksumHandler.get_gene_checksum(gene)
@@ -67,6 +71,17 @@ class AnnotationHandler(object):
         (transcript_stable_id, transcript_stable_id_version) = stable_id.split(".")
         transcript['stable_id'] = transcript_stable_id
         transcript['stable_id_version'] = transcript_stable_id_version
+        # populate biotype for transcript
+        if transcript_stable_id[0:3] == "NM_":
+            transcript['biotype'] = "protein_coding"
+        elif transcript_stable_id[0:3] == "NR_":
+            transcript['biotype'] = "non_protein_coding"
+        elif transcript_stable_id[0:3] == "XM_":
+            transcript['biotype'] = "predicted_protein_coding"
+        elif transcript_stable_id[0:3] == "XR_":
+            transcript['biotype'] = "predicted_non_protein_coding"
+        else:
+            transcript['biotype'] = None       
         transcript['session_id'] = None
         transcript['transcript_checksum'] = None
         transcript['exon_set_checksum'] = None
