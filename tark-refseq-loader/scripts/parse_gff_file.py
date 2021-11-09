@@ -153,7 +153,13 @@ class ParseRecord(luigi.Task):
                     print("About to load gene => " + str(annotated_gene['stable_id']))
                     feature_handler = FeatureHandler(parent_ids=self.parent_ids, dbc=dbc)
                     feature_handler.save_features_to_database(feature_object_to_save)
-
+                  
+        # call update_utr_checksum() in databasehandler.py, to update UTR checksum in translation table          
+        if not self.dryrun:
+            print("About to update 5' and 3' UTR checksum in translation table")
+            feature_utr_checksum_handler = FeatureHandler(dbc=dbc)
+            feature_utr_checksum_handler.update_utr_checksum()
+            
         dbc.close()
         gff_handle.close()
 
