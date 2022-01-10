@@ -444,9 +444,29 @@ class FeatureHandler(SessionHandler, ReleaseHandler, ReleaseSourceHandler, Genom
         try:
             connection_pool = self.dbc
             cursor = connection_pool.cursor()
-            cursor.execute("UPDATE translation tl INNER JOIN translation_transcript tt ON tt.translation_id = tl.translation_id INNER JOIN (SELECT max(transcript_id) as transcript_id FROM transcript GROUP BY stable_id,assembly_id) AS v0 ON v0.transcript_id = tt.transcript_id INNER JOIN transcript t ON tt.transcript_id = t.transcript_id INNER JOIN sequence s ON s.seq_checksum = t.seq_checksum  SET tl.five_utr_checksum = UNHEX(SHA1(IF(t.loc_strand = 1 AND tl.loc_strand = 1, SUBSTRING(s.sequence,1,tl.loc_start-t.loc_start), SUBSTRING(s.sequence,1,t.loc_end-tl.loc_end)))), tl.three_utr_checksum = UNHEX(SHA1(IF(t.loc_strand = 1 AND tl.loc_strand = 1, SUBSTRING(s.sequence,-(t.loc_end-tl.loc_end)), SUBSTRING(s.sequence,-(tl.loc_start-t.loc_start)))))")
-            connection_pool.commit()
-
+            #cursor.execute("UPDATE translation tl INNER JOIN translation_transcript tt ON tt.translation_id = tl.translation_id INNER JOIN (SELECT max(transcript_id) as transcript_id FROM transcript GROUP BY stable_id,assembly_id) AS v0 ON v0.transcript_id = tt.transcript_id INNER JOIN transcript t ON tt.transcript_id = t.transcript_id INNER JOIN sequence s ON s.seq_checksum = t.seq_checksum  SET tl.five_utr_checksum = UNHEX(SHA1(IF(t.loc_strand = 1 AND tl.loc_strand = 1, SUBSTRING(s.sequence,1,tl.loc_start-t.loc_start), SUBSTRING(s.sequence,1,t.loc_end-tl.loc_end)))), tl.three_utr_checksum = UNHEX(SHA1(IF(t.loc_strand = 1 AND tl.loc_strand = 1, SUBSTRING(s.sequence,-(t.loc_end-tl.loc_end)), SUBSTRING(s.sequence,-(tl.loc_start-t.loc_start)))))")
+            #connection_pool.commit()        
+            select_sql = ("""SELECT tl.translation_id, 
+                             CASE
+                                 WHEN t.loc_strand = 1 AND tl.loc_strand = 1 THEN SUBSTRING(s.sequence,1,tl.loc_start-t.loc_start)
+                                 ELSE SUBSTRING(s.sequence,1,t.loc_end-tl.loc_end)
+                             END AS five_utr_checksum
+                             CASE
+                                 WHEN t.loc_strand = 1 AND tl.loc_strand = 1 THEN SUBSTRING(s.sequence,-(t.loc_end-tl.loc_end))
+                                 ELSE SUBSTRING(s.sequence,-(tl.loc_start-t.loc_start))
+                             END three_utr_checksum
+                             FROM translation tl
+                             INNER JOIN translation_transcript tt ON tt.translation_id = tl.translation_id 
+                             INNER JOIN (SELECT max(transcript_id) as transcript_id FROM transcript GROUP BY stable_id,assembly_id) AS v0 ON v0.transcript_id = tt.transcript_id 
+                             INNER JOIN transcript t ON tt.transcript_id = t.transcript_id 
+                             INNER JOIN sequence s ON s.seq_checksum = t.seq_checksum""")
+            cursor.execute(select_sql)
+            select_results = cursor.fetchall()
+            update_sql = "UPDATE translation SET five_utr_checksum = %s, three_utr_checksum  = %s WHERE translation_id = %s"
+            for select_row in select_results:
+                checksum_data = (ChecksumHandler.checksum_list([select_row['five_utr_checksum']]),ChecksumHandler.checksum_list([select_row['three_utr_checksum']]),select_row['translation_id'])
+                cursor.execute(update_sql,checksum_data) 
+            connection_pool.commit()                
         except Exception as e:
             print('Failed to update UTR checksum of translation table: ' + str(e))
-            exit(0)
+            exit(0) 
