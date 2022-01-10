@@ -450,7 +450,7 @@ class FeatureHandler(SessionHandler, ReleaseHandler, ReleaseSourceHandler, Genom
                              CASE
                                  WHEN t.loc_strand = 1 AND tl.loc_strand = 1 THEN SUBSTRING(s.sequence,1,tl.loc_start-t.loc_start)
                                  ELSE SUBSTRING(s.sequence,1,t.loc_end-tl.loc_end)
-                             END AS five_utr_checksum
+                             END AS five_utr_checksum,
                              CASE
                                  WHEN t.loc_strand = 1 AND tl.loc_strand = 1 THEN SUBSTRING(s.sequence,-(t.loc_end-tl.loc_end))
                                  ELSE SUBSTRING(s.sequence,-(tl.loc_start-t.loc_start))
