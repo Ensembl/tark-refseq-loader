@@ -454,7 +454,7 @@ class FeatureHandler(SessionHandler, ReleaseHandler, ReleaseSourceHandler, Genom
                              CASE
                                  WHEN t.loc_strand = 1 AND tl.loc_strand = 1 THEN SUBSTRING(s.sequence,-(t.loc_end-tl.loc_end))
                                  ELSE SUBSTRING(s.sequence,-(tl.loc_start-t.loc_start))
-                             END three_utr_checksum
+                             END AS three_utr_checksum
                              FROM translation tl
                              INNER JOIN translation_transcript tt ON tt.translation_id = tl.translation_id 
                              INNER JOIN (SELECT max(transcript_id) as transcript_id FROM transcript GROUP BY stable_id,assembly_id) AS v0 ON v0.transcript_id = tt.transcript_id 
