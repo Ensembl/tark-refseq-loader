@@ -464,7 +464,7 @@ class FeatureHandler(SessionHandler, ReleaseHandler, ReleaseSourceHandler, Genom
             select_results = cursor.fetchall()
             update_sql = "UPDATE translation SET five_utr_checksum = %s, three_utr_checksum  = %s WHERE translation_id = %s"
             for select_row in select_results:
-                checksum_data = (ChecksumHandler.checksum_list([select_row['five_utr_checksum']]),ChecksumHandler.checksum_list([select_row['three_utr_checksum']]),select_row['translation_id'])
+                checksum_data = (ChecksumHandler.checksum_list([select_row[1]]),ChecksumHandler.checksum_list([select_row[2]]),select_row[0])
                 cursor.execute(update_sql,checksum_data) 
             connection_pool.commit()                
         except Exception as e:
