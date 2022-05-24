@@ -462,7 +462,7 @@ class FeatureHandler(SessionHandler, ReleaseHandler, ReleaseSourceHandler, Genom
                              INNER JOIN sequence s ON s.seq_checksum = t.seq_checksum""")
             cursor.execute(select_sql)
             select_results = cursor.fetchall()
-            update_sql = "UPDATE translation SET five_utr_checksum = %s, three_utr_checksum  = %s WHERE translation_id = %s"
+            update_sql = "UPDATE translation SET five_utr_checksum = X%s, three_utr_checksum  = X%s WHERE translation_id = %s"
             for select_row in select_results:
                 checksum_data = (ChecksumHandler.checksum_list([select_row[1]]),ChecksumHandler.checksum_list([select_row[2]]),select_row[0])
                 cursor.execute(update_sql,checksum_data) 
