@@ -26,6 +26,45 @@ from handlers.refseq.fastahandler import FastaHandler
 from handlers.refseq.confighandler import ConfigHandler
 
 
+class StatusOutput:
+    @staticmethod
+    def create_status_file(download_dir, status_filename):
+        status_dir = download_dir + '/' + 'status_logs'
+        if not os.path.exists(status_dir):
+            os.makedirs(status_dir)
+        return status_dir + '/' + status_filename
+
+    @staticmethod
+    def write_done_to_status_file(download_dir, status_filename):
+        status_filepath = StatusOutput.create_status_file(download_dir, status_filename)
+        status_handle = open(status_filepath, "w")
+        status_handle.write("Done")
+        status_handle.close()
+
+
+class UtrChecksums(luigi.Task):
+    download_dir = luigi.Parameter()
+    status_file = 'status_file_utr_checksum'
+
+    def output(self):
+        status_filepath = StatusOutput.create_status_file(self.download_dir, self.status_file)
+        return luigi.LocalTarget(status_filepath)
+
+    def run(self):
+        mydb_config = ConfigHandler().getInstance().get_section_config(section_name="DATABASE")
+        dbh = DatabaseHandler(db_config=mydb_config,
+                              mypool_name="mypool_utr_checksums")
+        dbc = dbh.get_connection()
+
+        print("About to update 5' and 3' UTR checksum in translation table")
+        feature_utr_checksum_handler = FeatureHandler(dbc=dbc)
+        feature_utr_checksum_handler.update_utr_checksum()
+
+        StatusOutput.write_done_to_status_file(self.download_dir, self.status_file)
+
+        dbc.close()
+
+
 class ParseRecord(luigi.Task):
 
     download_dir = luigi.Parameter()
@@ -37,11 +76,9 @@ class ParseRecord(luigi.Task):
     status_file = None
 
     def output(self):
-        status_dir = self.download_dir + '/' + 'status_logs'
-        if not os.path.exists(status_dir):
-            os.makedirs(status_dir)
-        status_file = status_dir + '/' + 'status_file_chr' + str(self.seq_region)
-        return luigi.LocalTarget(status_file)
+        status_filename = 'status_file_chr' + str(self.seq_region)
+        status_filepath = StatusOutput.create_status_file(self.download_dir, status_filename)
+        return luigi.LocalTarget(status_filepath)
 
     def run(self):
 
@@ -153,24 +190,13 @@ class ParseRecord(luigi.Task):
                     print("About to load gene => " + str(annotated_gene['stable_id']))
                     feature_handler = FeatureHandler(parent_ids=self.parent_ids, dbc=dbc)
                     feature_handler.save_features_to_database(feature_object_to_save)
-                  
-        # call update_utr_checksum() in databasehandler.py, to update UTR checksum in translation table          
-        if not self.dryrun:
-            print("About to update 5' and 3' UTR checksum in translation table")
-            feature_utr_checksum_handler = FeatureHandler(dbc=dbc)
-            feature_utr_checksum_handler.update_utr_checksum()
             
         dbc.close()
         gff_handle.close()
 
         print("About to write to the status file")
-        status_dir = self.download_dir + '/' + 'status_logs'
-        if not os.path.exists(status_dir):
-            os.makedirs(status_dir)
-        self.status_file = status_dir + '/' + 'status_file_chr' + str(self.seq_region)
-        status_handle = open(self.status_file, "w")
-        status_handle.write("Done")
-        status_handle.close()
+        self.status_file = 'status_file_chr' + str(self.seq_region)
+        StatusOutput.write_done_to_status_file(self.download_dir, self.status_file)
 
 # time PYTHONPATH='.' python scripts/parse_gff_file.py --download_dir='/Users/prem/workspace/software/tmp/refseq_download_dir' --workers=1 --limit_chr='1' --dryrun=False
 # time PYTHONPATH='.' python scripts/parse_gff_file.py --download_dir='/Users/prem/workspace/software/tmp/refseq_download_dir' --workers=1 --limit_chr='22'
@@ -214,6 +240,8 @@ class ParseGffFileWrapper(luigi.WrapperTask):
             print(dbh)
             feature_handler = FeatureHandler(dbc=dbh.get_connection())
             parent_ids = feature_handler.populate_parent_tables()
+
+            yield UtrChecksums(download_dir=self.download_dir)
 
         print(downloaded_files['gff'])
 

@@ -459,14 +459,26 @@ class FeatureHandler(SessionHandler, ReleaseHandler, ReleaseSourceHandler, Genom
                              INNER JOIN translation_transcript tt ON tt.translation_id = tl.translation_id 
                              INNER JOIN (SELECT max(transcript_id) as transcript_id FROM transcript GROUP BY stable_id,assembly_id) AS v0 ON v0.transcript_id = tt.transcript_id 
                              INNER JOIN transcript t ON tt.transcript_id = t.transcript_id 
-                             INNER JOIN sequence s ON s.seq_checksum = t.seq_checksum""")
+                             INNER JOIN sequence s ON s.seq_checksum = t.seq_checksum
+                             WHERE tl.translation_id = '798'""")
             cursor.execute(select_sql)
             select_results = cursor.fetchall()
-            update_sql = "UPDATE translation SET five_utr_checksum = X%s, three_utr_checksum  = X%s WHERE translation_id = %s"
             for select_row in select_results:
-                checksum_data = (ChecksumHandler.checksum_list([select_row[1]]),ChecksumHandler.checksum_list([select_row[2]]),select_row[0])
-                cursor.execute(update_sql,checksum_data) 
-            connection_pool.commit()                
+                translation_id = select_row[0]
+                five_utr_checksum_sequence, three_utr_checksum_sequence = select_row[1:3]
+                if five_utr_checksum_sequence is not '' and three_utr_checksum_sequence is not '':
+                    update_sql = "UPDATE translation SET five_utr_checksum = X%s, three_utr_checksum  = X%s WHERE translation_id = %s"
+                    checksum_data = (ChecksumHandler.checksum_list([five_utr_checksum_sequence]), ChecksumHandler.checksum_list([three_utr_checksum_sequence]), translation_id)
+                elif five_utr_checksum_sequence is not '':
+                    update_sql = "UPDATE translation SET five_utr_checksum = X%s WHERE translation_id = %s"
+                    checksum_data = (ChecksumHandler.checksum_list([five_utr_checksum_sequence]), translation_id)
+                elif three_utr_checksum_sequence is not '':
+                    update_sql = "UPDATE translation SET three_utr_checksum = X%s WHERE translation_id = %s"
+                    checksum_data = (ChecksumHandler.checksum_list([three_utr_checksum_sequence]), translation_id)
+                else:
+                    return
+                cursor.execute(update_sql,checksum_data)
+            connection_pool.commit()
         except Exception as e:
             print('Failed to update UTR checksum of translation table: ' + str(e))
             exit(0) 
