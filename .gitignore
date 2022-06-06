@@ -14,3 +14,4 @@ env/*
 *.egg-info*
 .cache
 .pytest_cache
+refseq_source.ini
