@@ -26,6 +26,8 @@ from mysql.connector import errors
 import mysql.connector.pooling
 
 # Get an instance of a logger
+from handlers.refseq.utrhandler import UtrHandler
+
 logger = logging.getLogger(__name__)
 
 
@@ -437,3 +439,40 @@ class FeatureHandler(SessionHandler, ReleaseHandler, ReleaseSourceHandler, Genom
             exit(0)
 
         return row_id
+
+    def update_utr_checksum(self):
+        try:
+            connection_pool = self.dbc
+            cursor = connection_pool.cursor(dictionary=True)
+            select_sql = ("""SELECT t.transcript_id, tl.translation_id, tl.loc_start as translation_start, 
+            tl.loc_end as translation_end, t.loc_start as transcript_start, t.loc_end as transcript_end, 
+            t.loc_strand as transcript_strand, e.exon_id, e.loc_start as exon_start, e.loc_end as exon_end, 
+            et.exon_order, s.sequence as exon_sequence
+    FROM transcript t INNER JOIN translation_transcript tt ON tt.transcript_id = t.transcript_id
+    INNER JOIN translation tl on tl.translation_id = tt.translation_id
+    INNER JOIN exon_transcript et on et.transcript_id = t.transcript_id
+    INNER JOIN exon e on e.exon_id = et.exon_id
+    INNER JOIN sequence s on s.seq_checksum = e.seq_checksum
+    INNER JOIN transcript_release_tag trg ON trg.feature_id = t.transcript_id
+    INNER JOIN translation_release_tag tlrg ON tlrg.feature_id = tl.translation_id
+    WHERE trg.release_id = tlrg.release_id
+    -- ORDER BY t.transcript_id
+    LIMIT 10""")
+            cursor.execute(select_sql)
+            select_results = cursor.fetchall()
+
+            current_transcript_id = None
+            transcript_rows = []
+            for select_row in select_results:
+                if select_row["transcript_id"] == current_transcript_id:
+                    transcript_rows.append(select_row)
+                else:
+                    if transcript_rows:  # this should only be false for the first select_row
+                        utr_handler = UtrHandler(transcript_rows)
+                        print(utr_handler.get_utr_info())
+                    transcript_rows = [select_row]
+                    current_transcript_id = select_row["transcript_id"]
+
+        except Exception as e:
+            print('Failed to update UTR checksum of translation table: ' + str(e))
+            exit(0)
