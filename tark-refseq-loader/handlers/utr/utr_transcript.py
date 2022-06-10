@@ -1,12 +1,23 @@
 from itertools import groupby
 
+from handlers.refseq.checksumhandler import ChecksumHandler
 
-class UtrHandler:
+
+class UtrTranscript:
+    """Represents a transcript in a form appropriate for getting UTR information.
+
+    Attributes:
+        transcript: A dictionary representing a transcript.
+    """
+
     def __init__(self, transcript_rows):
+        """Init transcript attribute from transcript_rows, which should be a list of results from a SQL query with one
+        element for each exon in the transcript"""
+
         # There should be one translation per transcript
         assert len(list(groupby(transcript_rows, lambda t: t["translation_id"]))) == 1
         # Each row should correspond to a unique exon
-        assert len([row["exon_id"] for row in transcript_rows]) == len(transcript_rows)
+        assert len(set([row["exon_id"] for row in transcript_rows])) == len(transcript_rows)
 
         self.transcript = {"transcript_id": transcript_rows[0]["transcript_id"],
                            "transcript_start": transcript_rows[0]["transcript_start"],
@@ -23,8 +34,11 @@ class UtrHandler:
                                              "sequence": exon["exon_sequence"]})
 
     def get_utr_info(self):
-        """This method finds 5'/3' UTR start, end, and sequence.  See utr_definition_diagram.png
-        for an illustration of how 5'/3' UTRs are calculated from transcript, translation, and exons."""
+        """Finds 5'/3' UTR start, end, and sequence from the transcript attribute.  See utr_definition_diagram.png
+        for an illustration of how 5'/3' UTRs are calculated from transcript, translation, and exons.
+
+        :returns: a dictionary containing utr information
+        """
 
         translation_start = self.transcript['translation_start']
         translation_end = self.transcript['translation_end']
@@ -45,49 +59,59 @@ class UtrHandler:
             first_exon, last_exon = exons_sorted[0], exons_sorted[-1]
 
             if self.transcript['loc_strand'] == -1:
-                three_prime_utr_start = translation_start - 1
-
                 five_prime_utr_start = first_exon['end']
                 five_prime_utr_end = translation_end + 1
 
+                three_prime_utr_start = translation_start - 1
+                three_prime_utr_end = last_exon['start']
+
                 first_overlapping_exon_utr_len = first_overlapping_exon['end'] - translation_end
-                five_prime_utr_seq = five_prime_utr_seq + first_overlapping_exon['sequence'][:first_overlapping_exon_utr_len]
+                if first_overlapping_exon_utr_len > 0:
+                    five_prime_utr_seq = five_prime_utr_seq + first_overlapping_exon['sequence'][:first_overlapping_exon_utr_len]
 
                 last_overlapping_exon_utr_len = translation_start - last_overlapping_exon['start']
                 if last_overlapping_exon_utr_len > 0:
                     three_prime_utr_seq = last_overlapping_exon['sequence'][-last_overlapping_exon_utr_len:] + three_prime_utr_seq
 
-                if len(three_prime_utr_seq) > 0:
-                    three_prime_utr_end = last_exon['start']
-                else:
-                    three_prime_utr_start = 0
-                    three_prime_utr_end = 0
             else:
-                three_prime_utr_start = translation_end + 1
-
                 five_prime_utr_start = first_exon['start']
                 five_prime_utr_end = translation_start - 1
 
+                three_prime_utr_start = translation_end + 1
+                three_prime_utr_end = last_exon['end']
+
                 first_overlapping_exon_utr_len = translation_start - first_overlapping_exon['start']
-                five_prime_utr_seq = five_prime_utr_seq + first_overlapping_exon['sequence'][:first_overlapping_exon_utr_len]
+                if first_overlapping_exon_utr_len > 0:
+                    five_prime_utr_seq = five_prime_utr_seq + first_overlapping_exon['sequence'][:first_overlapping_exon_utr_len]
 
                 last_overlapping_exon_utr_len = last_overlapping_exon['end'] - translation_end
                 if last_overlapping_exon_utr_len > 0:
                     three_prime_utr_seq = last_overlapping_exon['sequence'][-last_overlapping_exon_utr_len:] + three_prime_utr_seq
 
-                if len(three_prime_utr_seq) > 0:
-                    three_prime_utr_end = last_exon['end']
-                else:
-                    three_prime_utr_start = 0
-                    three_prime_utr_end = 0
-            return {"three_prime_utr_start": three_prime_utr_start,
-                    "three_prime_utr_end": three_prime_utr_end,
-                    "three_prime_utr_length": len(three_prime_utr_seq),
-                    "three_prime_utr_seq": three_prime_utr_seq,
+            five_prime_utr_checksum = ChecksumHandler.checksum_list(five_prime_utr_seq)
+            three_prime_utr_checksum = ChecksumHandler.checksum_list(three_prime_utr_seq)
+
+            if len(five_prime_utr_seq) <= 0:
+                five_prime_utr_start = 0
+                five_prime_utr_end = 0
+                five_prime_utr_seq = ""
+                five_prime_utr_checksum = None
+
+            if len(three_prime_utr_seq) <= 0:
+                three_prime_utr_start = 0
+                three_prime_utr_end = 0
+                three_prime_utr_seq = ""
+                three_prime_utr_checksum = None
+
+            return {"transcript_id": self.transcript["transcript_id"],
                     "five_prime_utr_start": five_prime_utr_start,
                     "five_prime_utr_end": five_prime_utr_end,
-                    "five_prime_utr_length": len(five_prime_utr_seq),
-                    "five_prime_utr_seq": five_prime_utr_seq
+                    "five_prime_utr_seq": five_prime_utr_seq,
+                    "five_prime_utr_checksum": five_prime_utr_checksum,
+                    "three_prime_utr_start": three_prime_utr_start,
+                    "three_prime_utr_end": three_prime_utr_end,
+                    "three_prime_utr_seq": three_prime_utr_seq,
+                    "three_prime_utr_checksum": three_prime_utr_checksum
                     }
 
     @staticmethod
@@ -100,6 +124,6 @@ class UtrHandler:
 
     def get_exon_overlapping_translation(self, exon_list):
         for exon in exon_list:
-            if UtrHandler.ranges_overlap(exon["start"], exon["end"], self.transcript["translation_start"],
-                                         self.transcript["translation_end"]) > 0:
+            if UtrTranscript.ranges_overlap(exon["start"], exon["end"], self.transcript["translation_start"],
+                                            self.transcript["translation_end"]) > 0:
                 return exon

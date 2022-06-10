@@ -1,4 +1,5 @@
 # ignore all project cache and migration files
+refseq_source.ini
 __pycache__/
 *.py[cod]
 .project
@@ -14,4 +15,3 @@ env/*
 *.egg-info*
 .cache
 .pytest_cache
-refseq_source.ini
