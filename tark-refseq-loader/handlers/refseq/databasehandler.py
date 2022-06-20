@@ -26,7 +26,6 @@ from mysql.connector import errors
 import mysql.connector.pooling
 
 # Get an instance of a logger
-
 logger = logging.getLogger(__name__)
 
 

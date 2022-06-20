@@ -1,3 +1,20 @@
+"""
+.. See the NOTICE file distributed with this work for additional information
+   regarding copyright ownership.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+"""
+
 import unittest
 
 import pytest
@@ -40,7 +57,7 @@ class TestUtrTranscript(unittest.TestCase):
                                        {"transcript_id": 1, "translation_id": 2}]
 
         transcript = None
-        with pytest.raises(AssertionError) as assertion_error:
+        with pytest.raises(ValueError):
             transcript = UtrTranscript(non_unique_translation_rows)
         assert not transcript
 
@@ -48,7 +65,7 @@ class TestUtrTranscript(unittest.TestCase):
         non_unique_exons_rows = [{"transcript_id": 1, "translation_id": 1, "exon_id": 1},
                                  {"transcript_id": 1, "translation_id": 2, "exon_id": 1}]
         transcript = None
-        with pytest.raises(AssertionError) as assertion_error:
+        with pytest.raises(AssertionError):
             transcript = UtrTranscript(non_unique_exons_rows)
         assert not transcript
 
@@ -169,3 +186,6 @@ class TestUtrTranscript(unittest.TestCase):
         }
         actual_utr_info = utr_transcript.get_utr_info()
         self.assertEqual(expected_utr_info, actual_utr_info)
+
+    # def test_utr_weird_case(self):
+    #     transcript_rows =

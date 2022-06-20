@@ -1,3 +1,20 @@
+"""
+.. See the NOTICE file distributed with this work for additional information
+   regarding copyright ownership.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+"""
+
 from itertools import groupby
 
 from handlers.refseq.checksumhandler import ChecksumHandler
@@ -14,10 +31,11 @@ class UtrTranscript:
         """Init transcript attribute from transcript_rows, which should be a list of results from a SQL query with one
         element for each exon in the transcript"""
 
-        # There should be one translation per transcript
-        assert len(list(groupby(transcript_rows, lambda t: t["translation_id"]))) == 1
-        # Each row should correspond to a unique exon
-        assert len(set([row["exon_id"] for row in transcript_rows])) == len(transcript_rows)
+        if len(list(groupby(transcript_rows, lambda t: t["translation_id"]))) != 1:
+            raise ValueError(f"The given list of rows does not have a unique translation_id.")
+
+        if len(set([row["exon_id"] for row in transcript_rows])) != len(transcript_rows):
+            raise ValueError(f"The given list of rows contains duplicate rows.")
 
         self.transcript = {"transcript_id": transcript_rows[0]["transcript_id"],
                            "transcript_start": transcript_rows[0]["transcript_start"],
