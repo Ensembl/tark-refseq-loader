@@ -21,7 +21,7 @@ from handlers.utr.utr_handler import UtrHandler
 
 # This script loads calculates utr information for all transcripts and loads it into the transcripts table.
 # Run this command to execute using LSF from the tark-refseq-loader directory:
-# PYTHONPATH='.' bsub -o loading_log.out -e loading_log.err python scripts/run_utr_handler.py
+# PYTHONPATH='.' bsub -M 16000 -o loading_log.out -e loading_log.err python scripts/run_utr_handler.py
 if __name__ == "__main__":
     mydb_config = ConfigHandler().getInstance().get_section_config(section_name="DATABASE")
     dbh = DatabaseHandler(db_config=mydb_config,
