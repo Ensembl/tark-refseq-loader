@@ -14,7 +14,6 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 """
-
 import unittest
 
 import pytest
@@ -26,31 +25,31 @@ class TestUtrTranscript(unittest.TestCase):
     def test_ranges_overlap(self):
         # full overlap score=5
         overlap_score = UtrTranscript.ranges_overlap(10, 15, 10, 15)
-        self.assertEqual(overlap_score, 5)
+        self.assertTrue(overlap_score)
 
         # no overlap score=0
         overlap_score = UtrTranscript.ranges_overlap(10, 15, 20, 25)
-        self.assertEqual(overlap_score, 0)
+        self.assertFalse(overlap_score)
 
         # partial overlap score=3
         overlap_score = UtrTranscript.ranges_overlap(10, 15, 11, 14)
-        self.assertEqual(overlap_score, 3)
+        self.assertTrue(overlap_score)
 
         # full overlap  score=5
         overlap_score = UtrTranscript.ranges_overlap(10, 15, 8, 18)
-        self.assertEqual(overlap_score, 5)
+        self.assertTrue(overlap_score)
 
         # partial overlap score=3
         overlap_score = UtrTranscript.ranges_overlap(10, 15, 12, 18)
-        self.assertEqual(overlap_score, 3)
+        self.assertTrue(overlap_score)
 
         # partial_overlap score = 0 boundary case
         overlap_score = UtrTranscript.ranges_overlap(10, 15, 15, 20)
-        self.assertEqual(overlap_score, 0)
+        self.assertFalse(overlap_score)
 
         # partial_overlap score = 0 other boundary case
         overlap_score = UtrTranscript.ranges_overlap(15, 20, 10, 15)
-        self.assertEqual(overlap_score, 0)
+        self.assertFalse(overlap_score)
 
     def test_more_than_one_translation_id_throws(self):
         non_unique_translation_rows = [{"transcript_id": 1, "translation_id": 1},
@@ -103,11 +102,11 @@ class TestUtrTranscript(unittest.TestCase):
             "transcript_id": 1,
             "three_prime_utr_start": 0,
             "three_prime_utr_end": 0,
-            "three_prime_utr_checksum": None,
+            "three_prime_utr_checksum": "DA39A3EE5E6B4B0D3255BFEF95601890AFD80709",
             "three_prime_utr_seq": "",
             "five_prime_utr_start": 0,
             "five_prime_utr_end": 0,
-            "five_prime_utr_checksum": None,
+            "five_prime_utr_checksum": "DA39A3EE5E6B4B0D3255BFEF95601890AFD80709",
             "five_prime_utr_seq": ""
         }
         actual_utr_info = utr_transcript.get_utr_info()
@@ -140,11 +139,11 @@ class TestUtrTranscript(unittest.TestCase):
             "transcript_id": 1,
             "three_prime_utr_start": 91,
             "three_prime_utr_end": 100,
-            "three_prime_utr_checksum": '94D561B9AEC0775D6383EB2CB6493E97A1B3C9AB',
+            "three_prime_utr_checksum": 'B69DA3CDE08CD9EDD6E32C6DAEBC74F4230A6BFF',
             "three_prime_utr_seq": "GATTACA",
             "five_prime_utr_start": 2,
             "five_prime_utr_end": 19,
-            "five_prime_utr_checksum": '94D561B9AEC0775D6383EB2CB6493E97A1B3C9AB',
+            "five_prime_utr_checksum": 'B69DA3CDE08CD9EDD6E32C6DAEBC74F4230A6BFF',
             "five_prime_utr_seq": "GATTACA"
         }
         actual_utr_info = utr_transcript.get_utr_info()
@@ -177,11 +176,11 @@ class TestUtrTranscript(unittest.TestCase):
             "transcript_id": 1,
             "three_prime_utr_start": 19,
             "three_prime_utr_end": 2,
-            "three_prime_utr_checksum": '94D561B9AEC0775D6383EB2CB6493E97A1B3C9AB',
+            "three_prime_utr_checksum": 'B69DA3CDE08CD9EDD6E32C6DAEBC74F4230A6BFF',
             "three_prime_utr_seq": "GATTACA",
             "five_prime_utr_start": 100,
             "five_prime_utr_end": 91,
-            "five_prime_utr_checksum": '94D561B9AEC0775D6383EB2CB6493E97A1B3C9AB',
+            "five_prime_utr_checksum": 'B69DA3CDE08CD9EDD6E32C6DAEBC74F4230A6BFF',
             "five_prime_utr_seq": "GATTACA"
         }
         actual_utr_info = utr_transcript.get_utr_info()

@@ -25,7 +25,7 @@ from handlers.utr.utr_handler import UtrHandler
 if __name__ == "__main__":
     mydb_config = ConfigHandler().getInstance().get_section_config(section_name="DATABASE")
     dbh = DatabaseHandler(db_config=mydb_config,
-                          mypool_name="test_pool")
+                          mypool_name="utr_pool")
     dbc = dbh.get_connection()
     utr_handler = UtrHandler(dbc)
     utr_handler.populate_utr_info()

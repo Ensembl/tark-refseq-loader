@@ -106,20 +106,16 @@ class UtrTranscript:
                 if last_overlapping_exon_utr_len > 0:
                     three_prime_utr_seq = last_overlapping_exon['sequence'][-last_overlapping_exon_utr_len:] + three_prime_utr_seq
 
-            five_prime_utr_checksum = ChecksumHandler.checksum_list(five_prime_utr_seq)
-            three_prime_utr_checksum = ChecksumHandler.checksum_list(three_prime_utr_seq)
+            five_prime_utr_checksum = ChecksumHandler.checksum_list([five_prime_utr_seq])
+            three_prime_utr_checksum = ChecksumHandler.checksum_list([three_prime_utr_seq])
 
-            if len(five_prime_utr_seq) <= 0:
+            if not five_prime_utr_seq:
                 five_prime_utr_start = 0
                 five_prime_utr_end = 0
-                five_prime_utr_seq = ""
-                five_prime_utr_checksum = None
 
-            if len(three_prime_utr_seq) <= 0:
+            if not three_prime_utr_seq:
                 three_prime_utr_start = 0
                 three_prime_utr_end = 0
-                three_prime_utr_seq = ""
-                three_prime_utr_checksum = None
 
             return {"transcript_id": self.transcript["transcript_id"],
                     "five_prime_utr_start": five_prime_utr_start,
@@ -134,14 +130,10 @@ class UtrTranscript:
 
     @staticmethod
     def ranges_overlap(start1, end1, start2, end2):
-        x = range(start1, end1)
-        y = range(start2, end2)
-        xs = set(x)
-        overlap = xs.intersection(y)
-        return len(overlap)
+        return end1 > start2 and end2 > start1
 
     def get_exon_overlapping_translation(self, exon_list):
         for exon in exon_list:
             if UtrTranscript.ranges_overlap(exon["start"], exon["end"], self.transcript["translation_start"],
-                                            self.transcript["translation_end"]) > 0:
+                                            self.transcript["translation_end"]):
                 return exon

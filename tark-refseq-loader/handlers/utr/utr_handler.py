@@ -40,7 +40,6 @@ class UtrHandler:
     INNER JOIN transcript_release_tag trg ON trg.feature_id = t.transcript_id
     INNER JOIN translation_release_tag tlrg ON tlrg.feature_id = tl.translation_id
     WHERE trg.release_id = tlrg.release_id
-    AND t.transcript_id = 2943595
     """)
         cursor.execute(select_sql)
 
@@ -53,10 +52,30 @@ class UtrHandler:
         print("Finished dumping utr information.")
 
     @staticmethod
+    def aggregate_results(cursor):
+        """Aggregates query results by transcript id.
+        It would be better to aggregate inside the query, but MySQL 5.6 doesn't offer a way to do that.
+        MySQL 8.0 does have JSON_ARRAYAGG, which we should consider using if we upgrade MySQL
+        :arg cursor, an iterable which is expected to be the result of a SQL query
+        """
+        aggregated_results = {}
+        for i, row in enumerate(cursor):
+            if i % 10000 == 0:
+                print(f"Processed {i} rows")
+            if row["transcript_id"] in aggregated_results:
+                if row not in aggregated_results[row["transcript_id"]]:
+                    aggregated_results[row["transcript_id"]].append(row)
+            else:
+                aggregated_results[row["transcript_id"]] = [row]
+        return aggregated_results
+
+    @staticmethod
     def map_to_utrtranscipts(aggregated_results):
         utr_infos = []
-        for transcript_id in aggregated_results:
-            print(transcript_id)
+        num_results = len(aggregated_results)
+        for i, transcript_id in enumerate(aggregated_results):
+            if i % 1000 == 0:
+                print(f"Processed {i} transcripts of {num_results}")
             try:
                 utr_transcript = UtrTranscript(aggregated_results[transcript_id])
                 utr_info = utr_transcript.get_utr_info()
@@ -69,24 +88,6 @@ class UtrHandler:
                 raise e
         return utr_infos
 
-    @staticmethod
-    def aggregate_results(cursor):
-        """Aggregates query results by transcript id.
-        It would be better to aggregate inside the query, but MySQL 5.6 doesn't offer a way to do that.
-        MySQL 8.0 does have JSON_ARRAYAGG, which we should consider using if we upgrade MySQL
-        :arg cursor, an iterable which is expected to be the result of a SQL query
-        """
-        aggregated_results = {}
-        for i, row in enumerate(cursor):
-            if i % 1000 == 0:
-                print(f"Processed {i} rows")
-            if row["transcript_id"] in aggregated_results:
-                if row not in aggregated_results[row["transcript_id"]]:
-                    aggregated_results[row["transcript_id"]].append(row)
-            else:
-                aggregated_results[row["transcript_id"]] = [row]
-        return aggregated_results
-
     def update_transcripts(self, utr_infos):
         """Write the utr info into the transcript table
         :arg utr_infos, a list containing all the utr information for all the transcripts
@@ -94,11 +95,10 @@ class UtrHandler:
         connection_pool = self.dbc
         cursor = connection_pool.cursor(dictionary=True)
         for utr_info in utr_infos:
-            if utr_info["three_prime_utr_checksum"] is not None and utr_info["five_prime_utr_checksum"] is not None:
-                update_sql = "UPDATE transcript SET three_prime_utr_start = %(three_prime_utr_start)s, " \
-                             "three_prime_utr_end = %(three_prime_utr_end)s, three_prime_utr_seq = %(three_prime_utr_seq)s, " \
-                             "three_prime_utr_checksum = X%(three_prime_utr_checksum)s, five_prime_utr_start = %(five_prime_utr_start)s, " \
-                             "five_prime_utr_end = %(five_prime_utr_end)s, five_prime_utr_seq = %(five_prime_utr_seq)s, " \
-                             "five_prime_utr_checksum = X%(five_prime_utr_checksum)s WHERE transcript_id = %(transcript_id)s"
-                cursor.execute(update_sql, utr_info)
+            update_sql = "UPDATE transcript SET three_prime_utr_start = %(three_prime_utr_start)s, " \
+                         "three_prime_utr_end = %(three_prime_utr_end)s, three_prime_utr_seq = %(three_prime_utr_seq)s, " \
+                         "three_prime_utr_checksum = X%(three_prime_utr_checksum)s, five_prime_utr_start = %(five_prime_utr_start)s, " \
+                         "five_prime_utr_end = %(five_prime_utr_end)s, five_prime_utr_seq = %(five_prime_utr_seq)s, " \
+                         "five_prime_utr_checksum = X%(five_prime_utr_checksum)s WHERE transcript_id = %(transcript_id)s"
+            cursor.execute(update_sql, utr_info)
         connection_pool.commit()
