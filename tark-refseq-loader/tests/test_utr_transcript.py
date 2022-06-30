@@ -23,31 +23,31 @@ from handlers.utr.utr_transcript import UtrTranscript
 
 class TestUtrTranscript(unittest.TestCase):
     def test_ranges_overlap(self):
-        # full overlap score=5
+        # exact overlap
         overlap_score = UtrTranscript.ranges_overlap(10, 15, 10, 15)
         self.assertTrue(overlap_score)
 
-        # no overlap score=0
+        # no overlap
         overlap_score = UtrTranscript.ranges_overlap(10, 15, 20, 25)
         self.assertFalse(overlap_score)
 
-        # partial overlap score=3
+        # first range contains the second
         overlap_score = UtrTranscript.ranges_overlap(10, 15, 11, 14)
         self.assertTrue(overlap_score)
 
-        # full overlap  score=5
+        # second range contains the first
         overlap_score = UtrTranscript.ranges_overlap(10, 15, 8, 18)
         self.assertTrue(overlap_score)
 
-        # partial overlap score=3
+        # ranges intersect but neither contains the other
         overlap_score = UtrTranscript.ranges_overlap(10, 15, 12, 18)
         self.assertTrue(overlap_score)
 
-        # partial_overlap score = 0 boundary case
+        # end coord of first range is start coord of the second range
         overlap_score = UtrTranscript.ranges_overlap(10, 15, 15, 20)
         self.assertFalse(overlap_score)
 
-        # partial_overlap score = 0 other boundary case
+        # start coord of first range is end coord of the second range
         overlap_score = UtrTranscript.ranges_overlap(15, 20, 10, 15)
         self.assertFalse(overlap_score)
 
