@@ -1,4 +1,5 @@
 # ignore all project cache and migration files
+refseq_source.ini
 __pycache__/
 *.py[cod]
 .project
