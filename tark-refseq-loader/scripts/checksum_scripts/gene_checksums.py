@@ -44,7 +44,7 @@ def update_ref_seq_gene_checksum(session):
         # convert to binary format
         # utils.update_gene_checksum(session, gene_id, binascii.unhexlify(new_gene_checksum))
         print('new hex ', new_gene_checksum)
-        print("Same Checksum") if current_hex == new_gene_checksum else print("New Checksum")
+        print("Same Gene Checksum") if current_hex == new_gene_checksum else print("New Gene Checksum")
         print("\n")
 
 
@@ -71,33 +71,28 @@ def update_ensembl_gene_checksum(session):
          biotype, assembly_id, assembly_name) = row
 
 
-
         print('gene_id - ', gene_id, '---->',
               'inputs - ', assembly_id, ' - ', loc_region, ' - ', loc_start, ' - ', loc_end, ' - ',
-              loc_strand, ' - ', name_id, ' - ', stable_id, ' - ', stable_id_version)
+              loc_strand, ' - ', name_id, ' - ', stable_id, ' - ', stable_id_version, ' - ', biotype)
 
-
-        print('curr loc bin ', loc_checksum)
-        loc_current_hex = binascii.hexlify(loc_checksum).decode('utf-8').upper()
-        print('curr loc hex ', loc_current_hex)
-        loc_checksum = utils.generate_checksum(
-            'utf-8', assembly_name, loc_region, loc_start, loc_end,
-                      loc_strand)
-        print('new loc hex ', loc_checksum)
-        print("Same Location Checksum") if loc_current_hex == loc_checksum else print("New Location Checksum")
 
         print('curr bin ', gene_checksum)
         current_hex = binascii.hexlify(gene_checksum).decode('utf-8').upper()
         print('curr hex ', current_hex)
 
-        checksum = utils.generate_checksum(
-            'utf-8', assembly_id, loc_region, loc_start, loc_end,
+        # Remove None values
+        checksum_attributes = utils.remove_undefs(assembly_id, loc_region, loc_start, loc_end,
               loc_strand, name_id, stable_id, stable_id_version, biotype)
 
-        # convert to binary format
-        utils.update_gene_checksum(session, gene_id, binascii.unhexlify(checksum))
-        print('new hex ', checksum)
-        print("Same Gene Checksum") if current_hex == checksum else print("New Gene Checksum")
+
+        # Generate checksum
+        new_gene_checksum = utils.generate_checksum(
+            'utf-8', *checksum_attributes)
+
+        # convert to binary format and update database
+        #utils.update_gene_checksum(session, gene_id, binascii.unhexlify(checksum))
+        print('new hex ', new_gene_checksum)
+        print("Same Gene Checksum") if current_hex == new_gene_checksum else print("New Gene Checksum")
         print("\n")
 
 
@@ -118,7 +113,7 @@ if __name__ == '__main__':
     session = Session()
     try:
         session.begin()
-        #update_ref_seq_gene_checksum(session)
+        update_ref_seq_gene_checksum(session)
         update_ensembl_gene_checksum(session)
         print('Checksums updated')
         session.commit()

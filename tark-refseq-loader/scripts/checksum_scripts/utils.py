@@ -14,6 +14,18 @@ def update_gene_checksum(session, gene_id, new_checksum):
     session.execute(sql, {"checksum": new_checksum, "gene_id": gene_id})
 
 
+def update_transcript_checksum(session, transcript_id, new_checksum):
+    # Create the SQL statement
+    sql = text("""
+                UPDATE transcript
+                SET transcript_checksum = :checksum
+                WHERE transcript_id = :transcript_id
+            """)
+
+    # Execute the SQL statement
+    session.execute(sql, {"checksum": new_checksum, "transcript_id": transcript_id})
+
+
 def generate_checksum(enc, *attr_list):
     cs = hashlib.sha1()  # update to other latest sha implementations
 
@@ -23,8 +35,6 @@ def generate_checksum(enc, *attr_list):
             # Convert binary strings to hexadecimal strings
             main_list.append(binascii.hexlify(item).decode(enc).upper())
             # main_list.append(str(item))
-        elif item is None:
-            continue
         else:
             main_list.append(str(item))
 
@@ -43,3 +53,12 @@ def generate_checksum(enc, *attr_list):
         return hex_digest
     else:
         return None
+
+
+def remove_undefs(*attr_list):
+    res = [i for i in attr_list if i is not None]
+    return res
+
+
+
+
