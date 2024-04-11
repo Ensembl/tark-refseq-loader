@@ -8,103 +8,106 @@ from sqlalchemy import text
 import hashlib
 import binascii
 import traceback
+import utils
 
 
-def update_checksum():
-    print('connecting to database...')
+def update_ref_seq_transcript_checksum(session):
 
-    databases = ['ensembl_tark_e75_to_e104_biotype_fix']
-
-    for db in databases:
-        print('dbName ', db)
-        engine = create_engine(f'mysql+pymysql://USER:PASSWORD@HOST:PORT/{db}')   # Use your database connection string
-        Session = sessionmaker(bind=engine)
-        session = Session()
-        try:
-            session.begin()
-
-            # Execute the query and fetch all results
-            query = text("""
-                        SELECT loc_checksum, biotype, stable_id, stable_id_version, exon_set_checksum, seq_checksum, transcript_checksum, transcript_id
-                        FROM transcript
-                        WHERE transcript_id IN (
-                            SELECT transcript_release_tag.feature_id
-                            FROM transcript_release_tag
-                            WHERE transcript_release_tag.release_id IN (
-                                SELECT release_set.release_id
-                                FROM release_set
-                                WHERE source_id = 2
-                            )
-                        )
-                    """)
-
-            results = session.execute(query)
-
-            for row in results:
-                loc_checksum, biotype, stable_id, stable_id_version, exon_set_checksum, seq_checksum, transcript_checksum, transcript_id = row
-                print('inputs ', loc_checksum, biotype, stable_id, stable_id_version, exon_set_checksum, seq_checksum, transcript_checksum, transcript_id, '\n')
-                print('curr bin ', transcript_checksum)
-                print('curr hex ', binascii.hexlify(transcript_checksum).decode('utf-8').upper())
-
-                checksum = checksum_list('utf-8', loc_checksum, stable_id, stable_id_version, exon_set_checksum, seq_checksum, biotype)
-                print('second calculation.....')
-                new_transcript_checksum = checksum_list('utf-8', checksum)
-
-                # convert to binary format
-                update_transcript_checksum(session, transcript_id, binascii.unhexlify(new_transcript_checksum))
-                print('new hex ', new_transcript_checksum)
-                print("\n")
-
-            session.commit()
-        except Exception as e:
-            print(e)
-            print(traceback.format_exc())
-            session.rollback()
-        finally:
-            session.close()
-
-
-def checksum_list(enc, *attr_list):
-    cs = hashlib.sha1()   # update to other latest sha implementations
-
-    main_list = []
-    for item in attr_list:
-        if isinstance(item, bytes):
-            # Convert binary strings to hexadecimal strings
-            main_list.append(binascii.hexlify(item).decode(enc).upper())
-            # main_list.append(str(item))
-        else:
-            main_list.append(str(item))
-
-    if len(main_list) > 1:
-        main_list_joined = ':'.join(main_list)
-    elif len(main_list) == 1:
-        main_list_joined = main_list[0]
-    else:
-        return None
-
-    if main_list_joined is not None:
-        cs.update(main_list_joined.encode('utf-8').strip())
-        hex_digest = binascii.hexlify(cs.digest()).decode('ascii').upper()
-
-        return hex_digest
-    else:
-        return None
-
-def update_transcript_checksum(session, transcript_id, new_checksum):
-    # Create the SQL statement
-    sql = text("""
-                UPDATE transcript
-                SET transcript_checksum = :checksum
-                WHERE transcript_id = :transcript_id
+    # Execute the query and fetch all results
+    query = text("""
+                SELECT loc_checksum, biotype, stable_id, stable_id_version, exon_set_checksum, seq_checksum, transcript_checksum, transcript_id
+                FROM transcript
+                WHERE transcript_id IN (
+                    SELECT transcript_release_tag.feature_id
+                    FROM transcript_release_tag
+                    WHERE transcript_release_tag.release_id IN (
+                        SELECT release_set.release_id
+                        FROM release_set
+                        WHERE source_id = 2
+                    )
+                )
             """)
 
-    # Execute the SQL statement
-    session.execute(sql, {"checksum": new_checksum, "transcript_id": transcript_id})
+    results = session.execute(query)
+
+    for row in results:
+        loc_checksum, biotype, stable_id, stable_id_version, exon_set_checksum, seq_checksum, transcript_checksum, transcript_id = row
+        print('inputs ', loc_checksum, biotype, stable_id, stable_id_version, exon_set_checksum, seq_checksum, transcript_checksum, transcript_id, '\n')
+        print('curr bin ', transcript_checksum)
+        current_hex = binascii.hexlify(transcript_checksum).decode('utf-8').upper()
+        print('curr hex ', current_hex)
+
+        checksum = utils.generate_checksum('utf-8', loc_checksum, stable_id, stable_id_version, exon_set_checksum, seq_checksum, biotype)
+        print('second calculation.....')
+        new_transcript_checksum = utils.generate_checksum('utf-8', checksum)
+
+        # convert to binary format
+        # utils.update_transcript_checksum(session, transcript_id, binascii.unhexlify(new_transcript_checksum))
+        print('new hex ', new_transcript_checksum)
+        print("Same Transcript Checksum") if current_hex == new_transcript_checksum else print("New Transcript Checksum")
+        print("\n")
 
 
-# Press the green button in the gutter to run the script.
+def update_ensembl_transcript_checksum(session):
+
+    # Execute the query and fetch all results
+    query = text("""
+                SELECT transcript_id, stable_id, stable_id_version, loc_checksum,
+                 exon_set_checksum, seq_checksum, biotype, transcript_checksum
+                FROM transcript
+                INNER JOIN transcript_release_tag on transcript.transcript_id = transcript_release_tag.feature_id
+                INNER JOIN release_set on transcript_release_tag.release_id = release_set.release_id
+                INNER JOIN release_source on release_set.source_id = release_source.source_id
+                WHERE release_source.shortname = 'Ensembl'
+            """)
+
+    results = session.execute(query)
+
+    for row in results:
+        (transcript_id, stable_id, stable_id_version, loc_checksum,
+         exon_set_checksum, seq_checksum, biotype, transcript_checksum) = row
+
+        print('inputs ', loc_checksum, stable_id, stable_id_version, exon_set_checksum, seq_checksum, biotype, '\n')
+
+        print('curr transcript bin ', transcript_checksum)
+        current_transcript_hex = binascii.hexlify(transcript_checksum).decode('utf-8').upper()
+        print('curr transcript hex ', current_transcript_hex)
+
+        #checksum_attributes = utils.remove_undefs(loc_checksum, stable_id, stable_id_version, exon_set_checksum, seq_checksum, biotype)
+        # TODO: Use the above line
+        checksum_attributes = utils.remove_undefs(loc_checksum, stable_id, stable_id_version, exon_set_checksum, seq_checksum)
+
+        new_transcript_checksum = utils.generate_checksum('utf-8', *checksum_attributes)
+
+        # convert to binary format
+        # utils.update_transcript_checksum(session, transcript_id, binascii.unhexlify(new_transcript_checksum))
+        print('new hex ', new_transcript_checksum)
+        print("Same Transcript Checksum") if current_transcript_hex == new_transcript_checksum else print("New Transcript Checksum")
+        print("\n")
+
+
+
 if __name__ == '__main__':
-    print('Updating checksums')
-    update_checksum()
-    print('Checksums updated')
+    print('Updating transcript checksums')
+
+    print('connecting to database...')
+    host = 'mysql-ens-tark-rel'
+    user = 'ensro'
+    password = ''
+    port = '4650'
+    databases = 'ensembl_tark_e75_to_e104_biotype_fix'
+    engine = create_engine(f'mysql+pymysql://{user}:{password}@{host}:{port}/{databases}')  # Use your database connection string
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    try:
+        session.begin()
+        #update_ref_seq_transcript_checksum(session)
+        update_ensembl_transcript_checksum(session)
+        print('Checksums updated')
+        session.commit()
+    except Exception as e:
+        print(e)
+        print(traceback.format_exc())
+        session.rollback()
+    finally:
+        session.close()
