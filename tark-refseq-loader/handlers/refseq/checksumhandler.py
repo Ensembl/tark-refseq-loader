@@ -104,11 +104,11 @@ class ChecksumHandler(object):
 
     @classmethod
     def get_gene_attributes(cls):
-        return ['loc_checksum', 'name_id', 'stable_id', 'stable_id_version']
+        return ['loc_checksum', 'name_id', 'stable_id', 'stable_id_version', 'biotype']
 
     @classmethod
     def get_transcript_attributes(cls):
-        return ['loc_checksum', 'stable_id', 'stable_id_version', 'exon_set_checksum', 'seq_checksum']
+        return ['loc_checksum', 'stable_id', 'stable_id_version', 'exon_set_checksum', 'seq_checksum', 'biotype']
 
     @classmethod
     def get_translation_attributes(cls):
