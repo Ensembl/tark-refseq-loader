@@ -182,6 +182,7 @@ class FeatureHandler(SessionHandler, ReleaseHandler, ReleaseSourceHandler, Genom
             print(".........Popultating GENOME table.........\n")
 
         if "assembly" in init_table_list:
+            # remember to change assembly_name to GRCh37 when loading refseq with such an assembly
             assembly_data = {"genome_id": str(genome_id), "assembly_name": "GRCh38", "session_id": str(session_id)}
             assembly_id = self.load_assembly(assembly_data)
             parent_ids['assembly_id'] = assembly_id
@@ -253,7 +254,7 @@ class FeatureHandler(SessionHandler, ReleaseHandler, ReleaseSourceHandler, Genom
                         VALUES (\
                         %(stable_id)s, %(stable_id_version)s,  %(biotype)s,  %(assembly_id)s, \
                         %(loc_region)s, %(loc_start)s,  %(loc_end)s,  %(loc_strand)s,  X%(loc_checksum)s, \
-                        %(hgnc_id)s,  X%(gene_checksum)s,  %(session_id)s) \
+                        %(name_id)s,  X%(gene_checksum)s,  %(session_id)s) \
                         ON DUPLICATE KEY UPDATE gene_id=LAST_INSERT_ID(gene_id)")
 
         gene_id = self.insert_data(insert_gene, gene_data,

@@ -46,7 +46,7 @@ class AnnotationHandler(object):
         hgnc_id = cls.parse_qualifiers(gene_feature.qualifiers, "Dbxref", "HGNC:HGNC")
         if hgnc_id is not None:
             hgnc_id = "HGNC:" + hgnc_id
-        gene['hgnc_id'] = hgnc_id
+        gene['name_id'] = hgnc_id
         # populate biotype for gene
         if 'gene_biotype' in gene_feature.qualifiers:
             gene['biotype'] = gene_feature.qualifiers['gene_biotype'][0]

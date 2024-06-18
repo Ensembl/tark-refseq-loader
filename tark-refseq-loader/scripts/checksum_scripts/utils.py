@@ -1,3 +1,4 @@
+### This script contains various utilities for the transcript_checksum module ###
 from sqlalchemy import text
 import hashlib
 import binascii
@@ -25,6 +26,17 @@ def update_transcript_checksum(session, transcript_id, new_checksum):
     # Execute the SQL statement
     session.execute(sql, {"checksum": new_checksum, "transcript_id": transcript_id})
 
+def convert_vars(enc, *attr_list):
+    main_list = []
+    for item in attr_list:
+        if isinstance(item, bytes):
+            # Convert binary strings to hexadecimal strings
+            main_list.append(binascii.hexlify(item).decode(enc).upper())
+            # main_list.append(str(item))
+        else:
+            main_list.append(str(item))
+
+    return ':'.join(main_list)
 
 def generate_checksum(enc, *attr_list):
     cs = hashlib.sha1()  # update to other latest sha implementations
