@@ -15,3 +15,5 @@ env/*
 *.egg-info*
 .cache
 .pytest_cache
+.idea
+appenv
