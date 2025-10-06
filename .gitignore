@@ -17,3 +17,5 @@ env/*
 .pytest_cache
 .idea
 appenv
+*.out
+*.err
