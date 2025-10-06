@@ -14,8 +14,9 @@
    See the License for the specific language governing permissions and
    limitations under the License.
 """
-
 from __future__ import print_function
+import re
+from typing import Any, Dict
 from datetime import datetime
 from handlers.refseq.confighandler import ConfigHandler
 from handlers.refseq.checksumhandler import ChecksumHandler
@@ -28,6 +29,52 @@ import mysql.connector.pooling
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
 
+def _to_int_pos(v: Any) -> int:
+    """
+    Convert Biopython Position objects and their string reprs to int.
+    Accepts:
+      - int
+      - objects with `.position` (ExactPosition, BeforePosition, AfterPosition, BetweenPosition)
+      - strings like "107", "ExactPosition(107)"
+    """
+    if isinstance(v, int):
+        return v
+    if hasattr(v, "position"):
+        return int(v.position)
+    if isinstance(v, str):
+        m = re.search(r"\d+", v)
+        if m:
+            return int(m.group(0))
+    # Let None pass through; caller can decide
+    if v is None:
+        return v
+    raise ValueError(f"Unrecognised coordinate type for integer field: {type(v)} -> {v!r}")
+
+_INTEGERISH_KEYS = {
+    # common coord/ordering/strand fields across tables
+    "loc_start", "loc_end", "loc_strand",
+    "seq_region_start", "seq_region_end",
+    "exon_start", "exon_end", "exon_order",
+    "cds_start", "cds_end", "cds_order",
+    # "strand", "phase", "frame", "rank",
+    "start", "end",
+    # "gene_id", "transcript_id", "translation_id", "assembly_id", "session_id",
+}
+
+def _normalise_insert_payload(insert_data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Shallow-copy and coerce integer-like fields to int. Leaves other fields untouched.
+    Uses key-name heuristics to avoid mangling text columns.
+    """
+    out = dict(insert_data)
+    for k, v in list(out.items()):
+        if v is None:
+            continue
+        # Only attempt ints on known / likely integer fields
+        # if (k in _INTEGERISH_KEYS) or k.endswith("_id") or k.endswith("_start") or k.endswith("_end"):
+        if (k in _INTEGERISH_KEYS) or k.endswith("_start") or k.endswith("_end"):
+            out[k] = _to_int_pos(v)
+    return out
 
 class DatabaseHandler(object):
 
@@ -415,9 +462,12 @@ class FeatureHandler(SessionHandler, ReleaseHandler, ReleaseSourceHandler, Genom
                 insert_sql = insert_sql.replace(sql_str, sql_str_to_replace, 1)
 
         row_id = None
-        try:
-            connection_pool = self.dbc
-            cursor = connection_pool.cursor()
+        connection_pool = self.dbc
+        cursor = connection_pool.cursor()
+        try:            
+            # 🔒 Normalise payload before execution
+            insert_data = _normalise_insert_payload(insert_data)
+
             if FOREIGN_KEY_CHECKS == 0:
                 cursor.execute("SET FOREIGN_KEY_CHECKS=0")
 
@@ -427,12 +477,24 @@ class FeatureHandler(SessionHandler, ReleaseHandler, ReleaseSourceHandler, Genom
             row_id = cursor.lastrowid
 
             cursor = connection_pool.cursor()
-            if FOREIGN_KEY_CHECKS == 0:
-                cursor.execute("SET FOREIGN_KEY_CHECKS=1")
+            # if FOREIGN_KEY_CHECKS == 0:
+            #     cursor.execute("SET FOREIGN_KEY_CHECKS=1")
 
         except Exception as e:
+            # Proper error handling: rollback & re-raise (do NOT exit)
+            try:
+                connection_pool.rollback()
+            except Exception:
+                pass
             print('Failed to insert: ' + str(e))
             print(insert_sql)
-            exit(0)
+            print("DATA:", insert_data)
+            raise
+        finally:
+            try:
+                if FOREIGN_KEY_CHECKS == 0:
+                    cursor.execute("SET FOREIGN_KEY_CHECKS=1")
+            finally:
+                cursor.close()
 
         return row_id
