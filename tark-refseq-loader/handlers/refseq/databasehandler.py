@@ -33,7 +33,7 @@ def _to_int_pos(v: Any) -> int:
     """
     Convert Biopython Position objects and their string reprs to int.
     Accepts:
-      - int
+      - int (including signed strand values)
       - objects with `.position` (ExactPosition, BeforePosition, AfterPosition, BetweenPosition)
       - strings like "107", "ExactPosition(107)"
     """
@@ -42,7 +42,7 @@ def _to_int_pos(v: Any) -> int:
     if hasattr(v, "position"):
         return int(v.position)
     if isinstance(v, str):
-        m = re.search(r"\d+", v)
+        m = re.search(r"[+-]?\d+", v)
         if m:
             return int(m.group(0))
     # Let None pass through; caller can decide
@@ -78,7 +78,7 @@ def _normalise_insert_payload(insert_data: Dict[str, Any]) -> Dict[str, Any]:
 
 class DatabaseHandler(object):
 
-    def __init__(self, db_config=None, mypool_name="mypool"):
+    def __init__(self, db_config=None, mypool_name="mypool", pool_size=32):
 
         if db_config is None:
             db_config = ConfigHandler().getInstance().get_section_config(section_name="DATABASE")
@@ -94,7 +94,7 @@ class DatabaseHandler(object):
         }
 
         connection_pool = mysql.connector.pooling.MySQLConnectionPool(pool_name=mypool_name,
-                                                                      pool_size=32,
+                                                                      pool_size=pool_size,
                                                                       pool_reset_session=True,
                                                                       **mydbconfig)
         print(connection_pool)

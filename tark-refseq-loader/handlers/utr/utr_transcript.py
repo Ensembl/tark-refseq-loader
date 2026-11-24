@@ -15,8 +15,6 @@
    limitations under the License.
 """
 
-from itertools import groupby
-
 from handlers.refseq.checksumhandler import ChecksumHandler
 
 
@@ -31,18 +29,19 @@ class UtrTranscript:
         """Init transcript attribute from transcript_rows, which should be a list of results from a SQL query with one
         element for each exon in the transcript"""
 
-        if len(list(groupby(transcript_rows, lambda t: t["translation_id"]))) != 1:
-            raise ValueError(f"The given list of rows does not have a unique translation_id.")
+        if len({row["translation_id"] for row in transcript_rows}) != 1:
+            raise ValueError("Expected exon rows for one translation")
 
-        if len(set([row["exon_id"] for row in transcript_rows])) != len(transcript_rows):
-            raise ValueError(f"The given list of rows contains duplicate rows.")
+        if len({row["exon_id"] for row in transcript_rows}) != len(transcript_rows):
+            raise ValueError("Duplicate exon IDs")
 
-        self.transcript = {"transcript_id": transcript_rows[0]["transcript_id"],
-                           "transcript_start": transcript_rows[0]["transcript_start"],
-                           "transcript_end": transcript_rows[0]["transcript_end"],
-                           "translation_start": transcript_rows[0]["translation_start"],
-                           "translation_end": transcript_rows[0]["translation_end"],
-                           "loc_strand": transcript_rows[0]["transcript_strand"],
+        row = transcript_rows[0]
+        self.transcript = {"transcript_id": row["transcript_id"],
+                           "transcript_start": row["transcript_start"],
+                           "transcript_end": row["transcript_end"],
+                           "translation_start": row["translation_start"],
+                           "translation_end": row["translation_end"],
+                           "loc_strand": self.get_original_strand(row),
                            "exons": []
                            }
         for exon in transcript_rows:
@@ -50,6 +49,35 @@ class UtrTranscript:
                                              "end": exon["exon_end"],
                                              "order": exon["exon_order"],
                                              "sequence": exon["exon_sequence"]})
+
+    @staticmethod
+    def get_original_strand(row):
+        strand = row["transcript_strand"]
+        if strand != 1 or not row.get("transcript_stable_id", "").startswith(("NM_", "XM_")):
+            return strand
+
+        # The RefSeq loader calculated the location checksum before normalizing
+        # the insert payload. Older Biopython versions also serialized positions
+        # differently, so check the numeric and ExactPosition forms.
+        location = {
+            "assembly_name": row.get("assembly_name"),
+            "loc_region": row.get("transcript_region"),
+            "loc_start": row["transcript_start"],
+            "loc_end": row["transcript_end"],
+            "loc_strand": -1,
+        }
+        checksum = row.get("transcript_loc_checksum")
+        if not checksum or None in location.values():
+            return strand
+
+        start, end = location["loc_start"], location["loc_end"]
+        for original_start in (start, f"ExactPosition({start})"):
+            for original_end in (end, f"ExactPosition({end})"):
+                location["loc_start"] = original_start
+                location["loc_end"] = original_end
+                if ChecksumHandler.get_location_checksum(location) == checksum:
+                    return -1
+        return strand
 
     def get_utr_info(self):
         """Finds 5'/3' UTR start, end, and sequence from the transcript attribute.  See utr_definition_diagram.png
@@ -60,77 +88,92 @@ class UtrTranscript:
 
         translation_start = self.transcript['translation_start']
         translation_end = self.transcript['translation_end']
+        if translation_start is None or translation_end is None or not 0 < translation_start <= translation_end:
+            raise ValueError("Invalid CDS coordinates")
 
-        if self.transcript["exons"] is not []:
-            exons_sorted = sorted(self.transcript["exons"], key=lambda exon: exon["order"])
+        strand = self.transcript["loc_strand"]
+        if strand not in (-1, 1):
+            raise ValueError("Invalid transcript strand")
 
-            first_overlapping_exon = self.get_exon_overlapping_translation(exons_sorted)
-            previous_exons = [exon for exon in exons_sorted if exon["order"] < first_overlapping_exon["order"]]
-            five_prime_utr_seq = "".join([exon["sequence"] for exon in previous_exons])
+        exons = self.transcript["exons"]
+        if any(exon["order"] is None or exon["start"] is None or exon["end"] is None
+               or not 0 < exon["start"] <= exon["end"] for exon in exons):
+            raise ValueError("Missing or invalid exon coordinates or order")
 
-            exons_reversed = reversed(exons_sorted)
+        exons_sorted = sorted(exons, key=lambda exon: exon["order"])
+        if len({exon["order"] for exon in exons_sorted}) != len(exons_sorted):
+            raise ValueError("Duplicate exon order")
+        starts = [exon["start"] for exon in exons_sorted]
+        ends = [exon["end"] for exon in exons_sorted]
+        reverse = strand == -1
+        if starts != sorted(starts, reverse=reverse) or ends != sorted(ends, reverse=reverse):
+            raise ValueError("Exon order disagrees with transcript strand")
 
-            last_overlapping_exon = self.get_exon_overlapping_translation(exons_reversed)
-            next_exons = [exon for exon in exons_sorted if exon["order"] > last_overlapping_exon["order"]]
-            three_prime_utr_seq = "".join([exon["sequence"] for exon in next_exons])
+        first_coding_exon = self.get_exon_overlapping_translation(exons_sorted)
+        last_coding_exon = self.get_exon_overlapping_translation(reversed(exons_sorted))
+        cds_five_prime, cds_three_prime = (translation_end, translation_start) if reverse else (
+            translation_start, translation_end)
+        if (first_coding_exon is None or last_coding_exon is None
+                or not first_coding_exon["start"] <= cds_five_prime <= first_coding_exon["end"]
+                or not last_coding_exon["start"] <= cds_three_prime <= last_coding_exon["end"]):
+            raise ValueError("CDS endpoints must fall within exons")
 
-            first_exon, last_exon = exons_sorted[0], exons_sorted[-1]
+        first_exon, last_exon = exons_sorted[0], exons_sorted[-1]
+        if reverse:
+            five_start, five_end = first_exon["end"], cds_five_prime + 1
+            three_start, three_end = cds_three_prime - 1, last_exon["start"]
+            prefix_length = first_coding_exon["end"] - cds_five_prime
+            suffix_length = cds_three_prime - last_coding_exon["start"]
+        else:
+            five_start, five_end = first_exon["start"], cds_five_prime - 1
+            three_start, three_end = cds_three_prime + 1, last_exon["end"]
+            prefix_length = cds_five_prime - first_coding_exon["start"]
+            suffix_length = last_coding_exon["end"] - cds_three_prime
 
-            if self.transcript['loc_strand'] == -1:
-                five_prime_utr_start = first_exon['end']
-                five_prime_utr_end = translation_end + 1
+        previous_exons = [exon for exon in exons_sorted if exon["order"] < first_coding_exon["order"]]
+        next_exons = [exon for exon in exons_sorted if exon["order"] > last_coding_exon["order"]]
+        five_seq = self.get_utr_sequence(previous_exons, first_coding_exon, prefix_length, five_prime=True)
+        three_seq = self.get_utr_sequence(next_exons, last_coding_exon, suffix_length, five_prime=False)
 
-                three_prime_utr_start = translation_start - 1
-                three_prime_utr_end = last_exon['start']
+        return {
+            "transcript_id": self.transcript["transcript_id"],
+            **self.utr_fields("five", five_start, five_end, five_seq),
+            **self.utr_fields("three", three_start, three_end, three_seq),
+        }
 
-                first_overlapping_exon_utr_len = first_overlapping_exon['end'] - translation_end
-                if first_overlapping_exon_utr_len > 0:
-                    five_prime_utr_seq = five_prime_utr_seq + first_overlapping_exon['sequence'][:first_overlapping_exon_utr_len]
+    @staticmethod
+    def get_utr_sequence(full_exons, coding_exon, length, five_prime):
+        sequences = [exon["sequence"] for exon in full_exons]
+        if any(not sequence for sequence in sequences):
+            return None
 
-                last_overlapping_exon_utr_len = translation_start - last_overlapping_exon['start']
-                if last_overlapping_exon_utr_len > 0:
-                    three_prime_utr_seq = last_overlapping_exon['sequence'][-last_overlapping_exon_utr_len:] + three_prime_utr_seq
+        if not length:
+            return "".join(sequences)
 
-            else:
-                five_prime_utr_start = first_exon['start']
-                five_prime_utr_end = translation_start - 1
+        boundary_sequence = coding_exon["sequence"]
+        if not boundary_sequence or len(boundary_sequence) < length:
+            return None
+        if five_prime:
+            return "".join(sequences) + boundary_sequence[:length]
+        return boundary_sequence[-length:] + "".join(sequences)
 
-                three_prime_utr_start = translation_end + 1
-                three_prime_utr_end = last_exon['end']
+    @staticmethod
+    def utr_fields(end_name, start=None, end=None, sequence=None):
+        if sequence is None:
+            start = end = None
+        elif sequence == "":
+            start = end = 0
 
-                first_overlapping_exon_utr_len = translation_start - first_overlapping_exon['start']
-                if first_overlapping_exon_utr_len > 0:
-                    five_prime_utr_seq = five_prime_utr_seq + first_overlapping_exon['sequence'][:first_overlapping_exon_utr_len]
-
-                last_overlapping_exon_utr_len = last_overlapping_exon['end'] - translation_end
-                if last_overlapping_exon_utr_len > 0:
-                    three_prime_utr_seq = last_overlapping_exon['sequence'][-last_overlapping_exon_utr_len:] + three_prime_utr_seq
-
-            five_prime_utr_checksum = ChecksumHandler.checksum_list([five_prime_utr_seq])
-            three_prime_utr_checksum = ChecksumHandler.checksum_list([three_prime_utr_seq])
-
-            if not five_prime_utr_seq:
-                five_prime_utr_start = 0
-                five_prime_utr_end = 0
-
-            if not three_prime_utr_seq:
-                three_prime_utr_start = 0
-                three_prime_utr_end = 0
-
-            return {"transcript_id": self.transcript["transcript_id"],
-                    "five_prime_utr_start": five_prime_utr_start,
-                    "five_prime_utr_end": five_prime_utr_end,
-                    "five_prime_utr_seq": five_prime_utr_seq,
-                    "five_prime_utr_checksum": five_prime_utr_checksum,
-                    "three_prime_utr_start": three_prime_utr_start,
-                    "three_prime_utr_end": three_prime_utr_end,
-                    "three_prime_utr_seq": three_prime_utr_seq,
-                    "three_prime_utr_checksum": three_prime_utr_checksum
-                    }
+        return {
+            f"{end_name}_prime_utr_start": start,
+            f"{end_name}_prime_utr_end": end,
+            f"{end_name}_prime_utr_seq": sequence,
+            f"{end_name}_prime_utr_checksum": ChecksumHandler.checksum_list([sequence]),
+        }
 
     @staticmethod
     def ranges_overlap(start1, end1, start2, end2):
-        return end1 > start2 and end2 > start1
+        return start1 <= end2 and start2 <= end1
 
     def get_exon_overlapping_translation(self, exon_list):
         for exon in exon_list:

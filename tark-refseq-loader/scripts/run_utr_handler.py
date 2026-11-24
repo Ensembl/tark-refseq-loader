@@ -15,17 +15,40 @@
    limitations under the License.
 """
 
+import argparse
+
 from handlers.refseq.confighandler import ConfigHandler
 from handlers.refseq.databasehandler import DatabaseHandler
 from handlers.utr.utr_handler import UtrHandler
 
-# This script loads calculates utr information for all transcripts and loads it into the transcripts table.
-# Run this command to execute using LSF from the tark-refseq-loader directory:
-# PYTHONPATH='.' bsub -M 16000 -o loading_log.out -e loading_log.err python scripts/run_utr_handler.py
-if __name__ == "__main__":
-    mydb_config = ConfigHandler().getInstance().get_section_config(section_name="DATABASE")
-    dbh = DatabaseHandler(db_config=mydb_config,
-                          mypool_name="utr_pool")
+def main():
+    parser = argparse.ArgumentParser(description="Calculate Tark transcript UTRs.")
+    parser.add_argument("--config", help="Path to the loader INI file.")
+    parser.add_argument("--transcript-id", dest="transcript_ids", type=int, action="append", default=[],
+                        help="Limit the calculation to this internal transcript ID. Repeat for multiple IDs.")
+    parser.add_argument("--dry-run", action="store_true", help="Report calculated coordinates and lengths without writing.")
+    args = parser.parse_args()
+
+    mydb_config = ConfigHandler(args.config).get_section_config(section_name="DATABASE")
+    dbh = DatabaseHandler(db_config=mydb_config, mypool_name="utr_pool", pool_size=1)
     dbc = dbh.get_connection()
-    utr_handler = UtrHandler(dbc)
-    utr_handler.populate_utr_info()
+    try:
+        utr_handler = UtrHandler(dbc)
+        if args.dry_run:
+            for utr_info in utr_handler.calculate_utr_info(args.transcript_ids):
+                ends = []
+                for end, label in (("five", "5′"), ("three", "3′")):
+                    sequence = utr_info[f"{end}_prime_utr_seq"]
+                    start = utr_info[f"{end}_prime_utr_start"]
+                    stop = utr_info[f"{end}_prime_utr_end"]
+                    interval = "unavailable" if sequence is None else f"{start}–{stop} ({len(sequence)} bp)"
+                    ends.append(f"{label} UTR {interval}")
+                print(f"{utr_info['transcript_id']}  " + "  ".join(ends))
+        else:
+            utr_handler.populate_utr_info(args.transcript_ids)
+    finally:
+        dbc.close()
+
+
+if __name__ == "__main__":
+    main()

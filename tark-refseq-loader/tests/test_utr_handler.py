@@ -31,3 +31,25 @@ class TestUtrHandler(unittest.TestCase):
                               2: [{"transcript_id": 2, "exon_id": 1}]}
         actual = UtrHandler.aggregate_results(rows)
         self.assertEqual(actual, expected)
+
+    def test_keeps_utr_end_shared_by_multiple_translations(self):
+        transcript = dict(transcript_id=1, transcript_start=10, transcript_end=18, transcript_strand=1,
+                          exon_id=1, exon_order=1, exon_start=10, exon_end=18, exon_sequence="AAATGTTTC",
+                          translation_end=16)
+        rows = [dict(transcript, translation_id=1, translation_start=12),
+                dict(transcript, translation_id=2, translation_start=13)]
+        result, = UtrHandler.map_to_utrtranscipts({1: rows})
+        for field in ("start", "end", "seq", "checksum"):
+            self.assertIsNone(result[f"five_prime_utr_{field}"])
+        self.assertEqual(result["three_prime_utr_seq"], "TC")
+
+    def test_invalid_cds_is_unavailable_and_does_not_stop_other_transcripts(self):
+        transcript = dict(transcript_id=1, translation_id=1, transcript_start=10, transcript_end=18,
+                          transcript_strand=1, exon_id=1, exon_order=1, exon_start=10, exon_end=18,
+                          exon_sequence="AAATGTTTC", translation_start=0, translation_end=16)
+        valid = dict(transcript, transcript_id=2, translation_start=10)
+        invalid_info, valid_info = UtrHandler.map_to_utrtranscipts({1: [transcript], 2: [valid]})
+        self.assertIsNone(invalid_info["five_prime_utr_start"])
+        self.assertIsNone(invalid_info["three_prime_utr_start"])
+        self.assertEqual(valid_info["five_prime_utr_start"], 0)
+        self.assertEqual(valid_info["three_prime_utr_seq"], "TC")
