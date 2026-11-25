@@ -18,6 +18,8 @@
 import hashlib
 import binascii
 
+from handlers.refseq.utils.location_utils import position_as_int, strand_as_int
+
 
 class ChecksumHandler(object):
 
@@ -48,7 +50,13 @@ class ChecksumHandler(object):
     @classmethod
     def get_location_checksum(cls, feature):
         loc_attrs = cls.get_loc_attributes()
-        return cls.checksum_list(cls.get_attribute_values(loc_attrs, feature))
+        location = {attr: feature[attr] for attr in loc_attrs if attr in feature}
+        for boundary in ("loc_start", "loc_end"):
+            if location.get(boundary) is not None:
+                location[boundary] = position_as_int(location[boundary])
+        if "loc_strand" in location:
+            location["loc_strand"] = strand_as_int(location["loc_strand"])
+        return cls.checksum_list(cls.get_attribute_values(loc_attrs, location))
 
     @classmethod
     def get_exon_checksum(cls, feature):

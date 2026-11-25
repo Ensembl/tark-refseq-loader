@@ -21,6 +21,11 @@ from handlers.refseq.confighandler import ConfigHandler
 
 import logging
 from handlers.refseq.utils.exon_utils import ExonUtils
+from handlers.refseq.utils.location_utils import (
+    feature_location_values,
+    position_as_int,
+    strand_as_int,
+)
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
@@ -34,9 +39,9 @@ class AnnotationHandler(object):
     @classmethod
     def get_annotated_gene(cls, chrom, gene_feature):
         gene = {}
-        gene['loc_start'] = str(gene_feature.location.start)
-        gene['loc_end'] = str(gene_feature.location.end)
-        gene['loc_strand'] = str(gene_feature.location.strand)
+        # The historical gene checksum uses Biopython's unshifted start.
+        gene['loc_start'], gene['loc_end'], gene['loc_strand'] = feature_location_values(
+            gene_feature.location)
         gene['loc_region'] = str(chrom)
         gene['stable_id'] = cls.parse_qualifiers(gene_feature.qualifiers, "Dbxref", "GeneID")
         gene['stable_id_version'] = 1
@@ -60,12 +65,10 @@ class AnnotationHandler(object):
     @classmethod
     def get_annotated_transcript(cls, sequence_handler, chrom, mRNA_feature):
         transcript = {}
-        # Note we have shifted one base here
         transcript['assembly_id'] = cls.ASSEMBLY_ID
         transcript['assembly_name'] = cls.ASSEMBLY_NAME
-        transcript['loc_start'] = str(mRNA_feature.location.start + 1)
-        transcript['loc_end'] = str(mRNA_feature.location.end)
-        transcript['loc_strand'] = str(mRNA_feature.location.strand)
+        start, end, strand = feature_location_values(mRNA_feature.location, start_offset=1)
+        transcript['loc_start'], transcript['loc_end'], transcript['loc_strand'] = start, end, strand
         transcript['loc_region'] = str(chrom)
         stable_id = mRNA_feature.qualifiers['transcript_id'][0]
         (transcript_stable_id, transcript_stable_id_version) = stable_id.split(".")
@@ -92,34 +95,16 @@ class AnnotationHandler(object):
 
     @classmethod
     def get_annotated_exons(cls, sequence_handler, seq_region, transcript_identifier, refseq_exon_list):
-        exon_sequences = []
-
-        refseq_exon_list_relative_coordinates = ExonUtils.compute_exon_coordinates(refseq_exon_list.copy())
-#         '''
-#         Ref: BioSeqFeature
-#         Note that the start and end location numbering follow Python's scheme,
-#         thus a GenBank entry of 123..150 (one based counting) becomes a location
-#         of [122:150] (zero based counting).
-#         '''
-
-        for exon in refseq_exon_list_relative_coordinates:
-            sequence = sequence_handler.get_seq_record_by_id_location(transcript_identifier,
-                                                                      exon['exon_start'], exon['exon_end'],
-                                                                      int(exon['exon_strand']))
-            exon_sequences.append(str(sequence))
-        # exon_sequences = sequence_handler.get_exon_sequences_by_identifier(transcript_identifier)
-        # print(exon_sequences)
+        relative_exons = ExonUtils.compute_exon_coordinates(refseq_exon_list)
         annotated_exons = []
-
-        if exon_sequences is None:
-            return None
-
-        if len(refseq_exon_list) != len(exon_sequences):
-            return None
-
-        for exon_feature, exon_sequence in zip(refseq_exon_list, exon_sequences):
-            annotated_exons.append(cls.get_annotated_exon(seq_region, exon_feature, exon_sequence))
-
+        for exon, relative_exon in zip(refseq_exon_list, relative_exons):
+            sequence = sequence_handler.get_seq_record_by_id_location(
+                transcript_identifier, relative_exon['exon_start'], relative_exon['exon_end'],
+                strand_as_int(exon['exon_strand']))
+            if sequence is None:
+                raise ValueError(
+                    f"Missing sequence for exon {exon['exon_order']} of {transcript_identifier}")
+            annotated_exons.append(cls.get_annotated_exon(seq_region, exon, str(sequence)))
         return annotated_exons
 
     @classmethod
@@ -127,9 +112,9 @@ class AnnotationHandler(object):
         exon = {}
         exon['assembly_id'] = cls.ASSEMBLY_ID
         exon['assembly_name'] = cls.ASSEMBLY_NAME
-        exon['loc_start'] = exon_feature["exon_start"]
-        exon['loc_end'] = exon_feature["exon_end"]
-        exon['loc_strand'] = exon_feature["exon_strand"]
+        exon['loc_start'] = position_as_int(exon_feature["exon_start"])
+        exon['loc_end'] = position_as_int(exon_feature["exon_end"])
+        exon['loc_strand'] = strand_as_int(exon_feature["exon_strand"])
         exon['loc_region'] = str(seq_region)
         exon['loc_checksum'] = ChecksumHandler.get_location_checksum(exon)
         exon['exon_order'] = exon_feature["exon_order"]
@@ -145,7 +130,7 @@ class AnnotationHandler(object):
     @classmethod
     def get_annotated_cds(cls, protein_sequence_handler, seq_region, protein_id, cds_list):
 
-        cds_strand = cds_list[0]['cds_strand']
+        cds_strand = strand_as_int(cds_list[0]['cds_strand'])
         protein_id = cds_list[0]['protein_id']
         (stable_id, stable_id_version) = protein_id.split(".")
 
@@ -170,16 +155,18 @@ class AnnotationHandler(object):
 
     @classmethod
     def get_translation_loc(cls, cds_list):
-        cds = cds_list[0]
-        if(cds['cds_strand'] == '1'):
+        strand = strand_as_int(cds_list[0]['cds_strand'])
+        if strand == 1:
             cds_start = [cds['cds_start'] for cds in cds_list if cds['cds_order'] == 1]
             cds_end = [cds['cds_end'] for cds in cds_list if cds['cds_order'] == len(cds_list)]
-        elif(cds['cds_strand'] == '-1'):
+        elif strand == -1:
             cds_start = [cds['cds_start'] for cds in cds_list if cds['cds_order'] == len(cds_list)]
             cds_end = [cds['cds_end'] for cds in cds_list if cds['cds_order'] == 1]
+        else:
+            raise ValueError(f"Expected a forward or reverse CDS strand, got {strand}")
 
         if len(cds_start) > 0 and len(cds_end) > 0:
-            return (cds_start[0], cds_end[0])
+            return (position_as_int(cds_start[0]), position_as_int(cds_end[0]))
         else:
             return (0, 0)
 

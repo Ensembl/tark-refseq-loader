@@ -24,6 +24,7 @@ from handlers.refseq.databasehandler import DatabaseHandler, FeatureHandler
 from handlers.refseq.checksumhandler import ChecksumHandler
 from handlers.refseq.fastahandler import FastaHandler
 from handlers.refseq.confighandler import ConfigHandler
+from handlers.refseq.utils.location_utils import feature_location_values
 
 
 class ParseRecord(luigi.Task):
@@ -92,10 +93,11 @@ class ParseRecord(luigi.Task):
                             refseq_exon_dict['exon_stable_id'] = str(mRNA_sub_feature.id)
                             refseq_exon_dict['exon_stable_id_version'] = 1  # dummmy version
                             refseq_exon_dict['exon_order'] = refseq_exon_order
-                            # note that we are shifting one base here
-                            refseq_exon_dict['exon_start'] = str(mRNA_sub_feature.location.start + 1)
-                            refseq_exon_dict['exon_end'] = str(mRNA_sub_feature.location.end)
-                            refseq_exon_dict['exon_strand'] = str(mRNA_sub_feature.location.strand)
+                            start, end, strand = feature_location_values(
+                                mRNA_sub_feature.location, start_offset=1)
+                            refseq_exon_dict['exon_start'] = start
+                            refseq_exon_dict['exon_end'] = end
+                            refseq_exon_dict['exon_strand'] = strand
                             refseq_exon_list.append(refseq_exon_dict)
                             refseq_exon_order += 1
 
@@ -103,10 +105,11 @@ class ParseRecord(luigi.Task):
                         if 'CDS' in mRNA_sub_feature.type:
 
                             refseq_cds_dict['cds_order'] = refseq_cds_order
-                            # note that we are shifting one base here
-                            refseq_cds_dict['cds_start'] = str(mRNA_sub_feature.location.start + 1)
-                            refseq_cds_dict['cds_end'] = str(mRNA_sub_feature.location.end)
-                            refseq_cds_dict['cds_strand'] = str(mRNA_sub_feature.location.strand)
+                            start, end, strand = feature_location_values(
+                                mRNA_sub_feature.location, start_offset=1)
+                            refseq_cds_dict['cds_start'] = start
+                            refseq_cds_dict['cds_end'] = end
+                            refseq_cds_dict['cds_strand'] = strand
                             refseq_cds_dict['cds_id'] = str(mRNA_sub_feature.id)
                             refseq_cds_dict['protein_id'] = str(mRNA_sub_feature.qualifiers['protein_id'][0])  # @IgnorePep8
                             refseq_cds_list.append(refseq_cds_dict)

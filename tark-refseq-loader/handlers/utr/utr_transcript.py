@@ -71,11 +71,14 @@ class UtrTranscript:
             return strand
 
         start, end = location["loc_start"], location["loc_end"]
+        loc_attrs = ChecksumHandler.get_loc_attributes()
         for original_start in (start, f"ExactPosition({start})"):
             for original_end in (end, f"ExactPosition({end})"):
                 location["loc_start"] = original_start
                 location["loc_end"] = original_end
-                if ChecksumHandler.get_location_checksum(location) == checksum:
+                # Compare the original text only when recognizing a legacy checksum.
+                inputs = ChecksumHandler.get_attribute_values(loc_attrs, location)
+                if ChecksumHandler.checksum_list(inputs) == checksum:
                     return -1
         return strand
 
